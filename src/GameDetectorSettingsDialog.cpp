@@ -17,7 +17,7 @@
 #include <QFileDialog>
 #include <obs-data.h>
 
-const QUrl TOKEN_GENERATOR_URL("https://twitchtokengenerator.com/quick/7of9EyvC9D");
+const QUrl TOKEN_GENERATOR_URL("https://twitchtokengenerator.com/quick/S2xsq6rhwz");
 
 GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialog(parent)
 {
