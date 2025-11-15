@@ -41,7 +41,7 @@ jobs:
     # Instalar Inno Setup
     - name: Install Inno Setup
       run: |
-        curl -L -o innosetup.exe https://files.jrsoftware.org/is/6/innosetup-6.3.3.exe
+        curl -L -o innosetup.exe https://files.jrsoftware.org/is/6/innosetup-6.6.0.exe
         .\innosetup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 
     # Configurar CMake
