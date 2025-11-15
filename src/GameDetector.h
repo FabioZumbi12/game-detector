@@ -18,6 +18,7 @@ private:
 	QString currentGameProcess;
 	QHash<QString, QString> gameNameMap; // exe -> friendly name
 	QSet<QString> knownGameExes;
+	bool isUsingSourceDetection;
 
 	explicit GameDetector(QObject *parent = nullptr);
 
@@ -26,6 +27,9 @@ private:
 
 	// Função auxiliar para obter a descrição de um arquivo EXE
 	QString getFileDescription(const QString &filePath);
+
+	// Função auxiliar para verificar se um executável está na lista de ignorados
+	friend bool isExeIgnored(const QString &exeName);
 
 public:
 	static GameDetector &get();
@@ -36,6 +40,7 @@ public:
 	void rescanForGames();
 	void stopScanning();
 	void loadGamesFromConfig();
+	void onSettingsChanged();
 
 
 signals:

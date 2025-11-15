@@ -13,6 +13,7 @@
 #include <QFrame>
 #include <QStyle>
 #include <QDesktopServices>
+#include <QCheckBox>
 #include <QFileDialog>
 #include <obs-data.h>
 
@@ -159,7 +160,9 @@ void GameDetectorSettingsDialog::saveSettings()
 	obs_data_array_release(gamesArray);
 
 	ConfigManager::get().save(settings);
-	GameDetector::get().loadGamesFromConfig();
+
+	// Notifica o detector que as configurações foram alteradas
+	GameDetector::get().onSettingsChanged();
 }
 
 void GameDetectorSettingsDialog::onAddGameClicked()
@@ -170,8 +173,21 @@ void GameDetectorSettingsDialog::onAddGameClicked()
 	}
 
 	QFileInfo fileInfo(filePath);
-	QString exeName = fileInfo.fileName();
-	QString gameName = fileInfo.completeBaseName();
+	QString exeName = fileInfo.fileName(); // "Cyberpunk2077.exe"
+
+	// Lógica para encontrar o nome amigável a partir da pasta pai,
+	// subindo de diretórios se necessário.
+	QDir gameDir = fileInfo.dir();
+	const QSet<QString> binaryFolderNames = {"bin", "binaries", "win64", "win_x64", "x64", "shipping"};
+	while(binaryFolderNames.contains(gameDir.dirName().toLower())) {
+		if (!gameDir.cdUp()) break;
+	}
+	QString gameName = gameDir.dirName(); // "Cyberpunk 2077"
+
+	// Se o nome da pasta for genérico, usa o nome base do arquivo como fallback.
+	if (gameName.isEmpty() || binaryFolderNames.contains(gameName.toLower())) {
+		gameName = fileInfo.completeBaseName();
+	}
 
 	int newRow = manualGamesTable->rowCount();
 	manualGamesTable->insertRow(newRow);
@@ -201,17 +217,20 @@ void GameDetectorSettingsDialog::onAutomaticScanFinished(const QList<std::tuple<
 
 	QSet<QString> existingExes;
 	for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
-		if (manualGamesTable->item(i, 1)) {
+		QTableWidgetItem* item = manualGamesTable->item(i, 1);
+		if (item) {
 			existingExes.insert(manualGamesTable->item(i, 1)->text());
 		}
 	}
 
+	bool itemsAdded = false;
 	for (const auto &gameTuple : foundGames) {
 		const QString &gameName = std::get<0>(gameTuple);
 		const QString &exeName = std::get<1>(gameTuple);
 		const QString &exePath = std::get<2>(gameTuple);
 
 		if (!existingExes.contains(exeName)) {
+			itemsAdded = true;
 			int newRow = manualGamesTable->rowCount();
 			manualGamesTable->insertRow(newRow);
 			QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
@@ -219,9 +238,15 @@ void GameDetectorSettingsDialog::onAutomaticScanFinished(const QList<std::tuple<
 			manualGamesTable->setItem(newRow, 0, nameItem);
 			manualGamesTable->setItem(newRow, 1, new QTableWidgetItem(exeName));
 			manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exePath));
+			existingExes.insert(exeName);
 		}
 	}
 	manualGamesTable->blockSignals(false);
+
+	if (itemsAdded) {
+		saveSettings(); // Salva as configurações para persistir os jogos adicionados
+	}
+
 	rescanButton->setEnabled(true);
 	rescanButton->setText(obs_module_text("Settings.ScanGames"));
 }

@@ -47,14 +47,13 @@ bool obs_module_load(void)
 	obs_frontend_add_tools_menu_item("Configurações do Game Detector", open_settings_dialog, nullptr);
 	blog(LOG_INFO, "[OBSGameDetector] Item de menu de ferramentas adicionado.");
 
-
 	ConfigManager::get().load();
 	get_dock()->loadSettingsFromConfig();
 	blog(LOG_INFO, "[OBSGameDetector] Caminho do arquivo de config: %s", obs_module_config_path("config.json"));
 
 	// Carrega a lista de jogos do arquivo de config e inicia o monitoramento de processos
 	GameDetector::get().loadGamesFromConfig();
-	GameDetector::get().startProcessMonitoring();
+	GameDetector::get().startScanning();
 
 	return true;
 }

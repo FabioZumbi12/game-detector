@@ -12,6 +12,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QTableWidget;
+class QCheckBox;
 
 class GameDetectorSettingsDialog : public QDialog {
 	Q_OBJECT

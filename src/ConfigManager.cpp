@@ -22,13 +22,13 @@ void ConfigManager::load()
 		// Define o valor padrão quando um novo arquivo de configuração é criado
 		obs_data_set_string(settings, COMMAND_KEY, "!setgame {game}");
 		obs_data_set_string(settings, COMMAND_NO_GAME_KEY, "!setgame just chatting");
-		blog(LOG_INFO, "[ConfigManager] Arquivo de configuracao nao encontrado, criando um novo.");
+		blog(LOG_INFO, "[OBSGameDetector] Arquivo de configuracao nao encontrado, criando um novo.");
 	} else {
-		blog(LOG_INFO, "[ConfigManager] Configuracoes carregadas do arquivo.");
+		blog(LOG_INFO, "[OBSGameDetector] Configuracoes carregadas do arquivo.");
 		// Garante que a chave exista, mesmo em configs antigas (para atualizações)
 		if (!obs_data_has_user_value(settings, COMMAND_KEY)) {
 			obs_data_set_string(settings, COMMAND_KEY, "!setgame {game}");
-			blog(LOG_INFO, "[ConfigManager] Chave de comando nao encontrada, definindo valor padrao.");
+			blog(LOG_INFO, "[OBSGameDetector] Chave de comando nao encontrada, definindo valor padrao.");
 		}
 		// Garante que a lista de jogos manuais exista
 		if (!obs_data_has_user_value(settings, MANUAL_GAMES_KEY)) {
@@ -55,13 +55,13 @@ void ConfigManager::setSettings(obs_data_t *settings_data)
 void ConfigManager::save(obs_data_t *settings)
 {
 	if (!settings) {
-		blog(LOG_ERROR, "[ConfigManager] Nao ha objeto de configuracao valido para salvar.");
+		blog(LOG_ERROR, "[OBSGameDetector] Nao ha objeto de configuracao valido para salvar.");
 		return;
 	}
 
 	const char *config_path_c = obs_module_config_path("config.json");
 	if (config_path_c == nullptr) {
-		blog(LOG_ERROR, "[ConfigManager] Caminho de configuracao invalido.");
+		blog(LOG_ERROR, "[OBSGameDetector] Caminho de configuracao invalido.");
 		return;
 	}
 
@@ -71,21 +71,21 @@ void ConfigManager::save(obs_data_t *settings)
 
 	if (!dir.exists()) {
 		if (dir.mkpath(".")) {
-			blog(LOG_INFO, "[ConfigManager] Diretorio de configuracao criado em: %s", dir.path().toStdString().c_str());
+			blog(LOG_INFO, "[OBSGameDetector] Diretorio de configuracao criado em: %s", dir.path().toStdString().c_str());
 		}
 	}
 
 	if (obs_data_save_json(settings, config_path_c)) {
-		blog(LOG_INFO, "[ConfigManager] Configuracoes salvas em: %s", config_path_c);
+		blog(LOG_INFO, "[OBSGameDetector] Configuracoes salvas em: %s", config_path_c);
 	} else {
-		blog(LOG_WARNING, "[ConfigManager] Falha ao salvar configuracoes em: %s", config_path_c);
+		blog(LOG_WARNING, "[OBSGameDetector] Falha ao salvar configuracoes em: %s", config_path_c);
 	}
 }
 
 void ConfigManager::save(const QString &token, const QString &command)
 {
 	if (!settings) {
-		blog(LOG_ERROR, "[ConfigManager] Nao ha objeto de configuracao valido para salvar.");
+		blog(LOG_ERROR, "[OBSGameDetector] Nao ha objeto de configuracao valido para salvar.");
 		return;
 	}
 

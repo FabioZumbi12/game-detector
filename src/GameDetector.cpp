@@ -2,6 +2,7 @@
 #include <obs-module.h>
 #include "ConfigManager.h"
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QDirIterator>
 #include <QSettings>
 #include <QJsonDocument>
@@ -19,6 +20,9 @@
 #pragma comment(lib, "version.lib")
 #endif
 
+// Declaração antecipada para a função auxiliar
+bool isExeIgnored(const QString &exeName);
+
 GameDetector &GameDetector::get()
 {
 	static GameDetector instance;
@@ -33,12 +37,12 @@ GameDetector::GameDetector(QObject *parent) : QObject(parent)
 	// Conecta o sinal de timeout do timer ao nosso slot de escaneamento
 	connect(gameDbWatcher, &QFutureWatcher<QList<std::tuple<QString, QString, QString>>>::finished, this,
 		&GameDetector::onGameScanFinished);
+	connect(scanTimer, &QTimer::timeout, this, &GameDetector::scanProcesses);
 }
 
 void GameDetector::startScanning()
 {
-	// Esta função não é mais o ponto de entrada principal.
-	// Apenas inicia o monitoramento de processos.
+	blog(LOG_INFO, "[OBSGameDetector] Iniciando detecção via escaneamento de processos.");
 	startProcessMonitoring();
 }
 
@@ -73,6 +77,12 @@ void GameDetector::onGameScanFinished()
 	loadGamesFromConfig();
 }
 
+void GameDetector::onSettingsChanged()
+{
+	// Recarrega a lista de jogos, pois pode ter sido alterada
+	loadGamesFromConfig();
+}
+
 void GameDetector::stopScanning()
 {
 	if (scanTimer->isActive()) {
@@ -81,167 +91,245 @@ void GameDetector::stopScanning()
 	}
 }
 
+// Lista de substrings para ignorar. Se qualquer parte do nome do executável
+// corresponder a uma dessas strings, ele será ignorado.
+const QStringList ignoreSubstrings = {
+	"7z", "presentmon", "dxsetup", "errorreporter", "crashpad", "buildpatchtool", "redmod", "dotnet", "bepinex",
+	"vcredist", "vc_redist", "redist", "prereq", "crashreport", "swarm", "unrealpak", "bink2", "bootstrap",
+	"shadercompile", "epicwebhelper", "svn", "python", "dumpmini", "datacollector", "testhost", "unrealgame",
+	"shipping" // "Shipping.exe" é muito comum em jogos Unreal, mas o nome do jogo vem antes.
+};
+
+// Lista de nomes de executáveis completos para ignorar.
+// A correspondência deve ser exata (ignorando maiúsculas/minúsculas).
+const QSet<QString> ignoreFullNames = {
+	"7za.exe", "compatibility.exe", "ispc.exe", "openssl.exe", "redprelauncher.exe", "scc.exe",
+	"interchangeworker.exe", "zen.exe", "applicationframehost.exe", "shellexperiencehost.exe",
+	"ndp462-kb3151800-x86-x64-allos-enu.exe", "ndp472-kb4054530-x86-x64-allos-enu.exe",
+	"ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe", "eaanticheat.gameservicelauncher.exe",
+	"eaanticheat.installer.exe", "common.extprotocol.executor.exe", "eztransxp.extprotocol.exe",
+	"lec.extprotocol.exe", "unrealandroidfiletool.exe", "unrealbuildtool.exe", "automationtool.exe",
+	"csvcollate.exe", "csvconvert.exe", "csvfilter.exe", "csvinfo.exe", "csvsplit.exe", "csvtosvg.exe",
+	"perfreporttool.exe", "regressionsreport.exe", "iphonepackager.exe", "networkprofiler.exe", "oidctoken.exe",
+	"swarmagent.exe", "swarmcoordinator.exe", "containerize.exe",
+	"microsoft.codeanalysis.workspaces.msbuild.buildhost.exe", "createdump.exe", "plink.exe", "pscp.exe",
+	"putty.exe", "node-bifrost.exe", "datasmithcadworker.exe", "hhc.exe", "apphost.exe",
+	"livecodingconsole.exe", "livelinkhub.exe", "switchboardlistener.exe", "switchboardlistenerhelper.exe",
+	"unrealeditor-cmd.exe", "unrealeditor-win64-debuggame-cmd.exe", "unrealeditor-win64-debuggame.exe",
+	"unrealeditor.exe", "unrealfrontend.exe", "unrealinsights.exe", "unreallightmass.exe",
+	"unrealmultiuserserver.exe", "unrealmultiuserslateserver.exe", "unrealobjectptrtool.exe",
+	"unrealpackagetool.exe", "unrealrecoverysvc.exe", "unrealtraceserver.exe", "xgecontrolworker.exe",
+	"zendashboard.exe", "zenserver.exe", "ubaagent.exe", "ubacacheservice.exe", "ubacli.exe", "ubaobjtool.exe",
+	"ubastorageproxy.exe", "ubatest.exe", "ubatestapp.exe", "ubavisualizer.exe", "unitycrashhandler64.exe",
+	"unitycrashhandler32.exe", "egodumper.exe", "mod_tools.exe", "steamworksexample.exe", "singlefilehost.exe",
+	"t32.exe", "t64.exe", "t64-arm.exe", "w32.exe", "w64.exe", "w64-arm.exe", "cli.exe", "cli-32.exe",
+	"cli-64.exe", "cli-arm64.exe", "gui.exe", "gui-32.exe", "gui-64.exe", "gui-arm64.exe", "pip.exe", "pip3.exe",
+	"pip3.11.exe", "x86_64-w64-mingw32-nmakehlp.exe", "diff.exe", "diff3.exe", "diff4.exe", "cl-filter.exe",
+	"d2u.exe", "u2d.exe", "rsync.exe", "ssh.exe", "ssh-agent.exe", "ssh-keygen.exe", "ideviceactivation.exe",
+	"idevicebackup.exe", "idevicebackup2.exe", "idevicedate.exe", "idevicedebug.exe",
+	"idevicedebugserverproxy.exe", "idevicediagnostics.exe", "ideviceenterrecovery.exe", "idevicefs.exe",
+	"ideviceimagemounter.exe", "ideviceinfo.exe", "ideviceinstaller.exe", "idevicename.exe",
+	"idevicenotificationproxy.exe", "idevicepair.exe", "ideviceprovision.exe", "idevicerestore.exe",
+	"idevicescreenshot.exe", "idevicesyslog.exe", "idevice_id.exe", "ios_webkit_debug_proxy.exe", "iproxy.exe",
+	"irecovery.exe", "itcpconnect.exe", "plistutil.exe", "plist_cmp.exe", "plist_test.exe", "usbmuxd.exe",
+	"clang++.exe", "iree-compile.exe", "ld.lld.exe", "torch-mlir-import-onnx.exe", "interlacedcapture.exe",
+	"timecodeburner.exe", "timecodecapture.exe", "arcoreimg.exe", "sqlite3.exe", "recast.exe"
+};
+
 QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutables()
 {
 	QList<std::tuple<QString, QString, QString>> foundGames;
-	QSet<QString> foundPaths;
-
-	// Lista de executáveis comuns que não são jogos para serem ignorados.	
-	const QSet<QString> ignoreList = {
-		// --- PARCIAIS ---
-		"PresentMon", "Compatibility.exe", "DXSETUP", "ErrorReporter", "crashpad", "Shipping.exe", "BuildPatchTool", "7z",
-		"redMod", "dotnet", "UnrealGame", "BepInEx",
-		"vcredist", "allos-enu", "vc_redist", "redist", "prereq", "crashreport", "swarm", "unrealpak", "bink2",
-		"bootstrap", "shadercompile", "epicwebhelper", "svn", "python", "dumpmini", "datacollector", "testhost",
-
-		// --- COMPLETOS (somente os que não são cobertos por parciais) ---
-		"openssl.exe", "REDprelauncher.exe", "scc.exe", "InterchangeWorker.exe", "zen.exe", "applicationframehost.exe",
-		"shellexperiencehost.exe", "ndp462-kb3151800-x86-x64-allos-enu.exe",
-		"ndp472-kb4054530-x86-x64-allos-enu.exe", "ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe",
-		"eaanticheat.gameservicelauncher.exe", "eaanticheat.installer.exe", "common.extprotocol.executor.exe",
-		"eztransxp.extprotocol.exe", "lec.extprotocol.exe", "unrealandroidfiletool.exe", "unrealbuildtool.exe",
-		"automationtool.exe", "csvcollate.exe", "csvconvert.exe", "csvfilter.exe", "csvinfo.exe",
-		"csvsplit.exe", "csvtosvg.exe", "perfreporttool.exe", "regressionsreport.exe", "iphonepackager.exe",
-		"networkprofiler.exe", "oidctoken.exe", "swarmagent.exe", "swarmcoordinator.exe", "containerize.exe",
-		"microsoft.codeanalysis.workspaces.msbuild.buildhost.exe", "createdump.exe", "plink.exe", "pscp.exe",
-		"putty.exe", "node-bifrost.exe", "datasmithcadworker.exe", "hhc.exe", "apphost.exe", "ispc.exe",
-		"livecodingconsole.exe", "livelinkhub.exe", "switchboardlistener.exe", "switchboardlistenerhelper.exe",
-		"unrealeditor-cmd.exe", "unrealeditor-win64-debuggame-cmd.exe", "unrealeditor-win64-debuggame.exe",
-		"unrealeditor.exe", "unrealfrontend.exe", "unrealinsights.exe", "unreallightmass.exe",
-		"unrealmultiuserserver.exe", "unrealmultiuserslateserver.exe", "unrealobjectptrtool.exe",
-		"unrealpackagetool.exe", "unrealrecoverysvc.exe", "unrealtraceserver.exe", "xgecontrolworker.exe",
-		"zendashboard.exe", "zenserver.exe", "ubaagent.exe", "ubacacheservice.exe", "ubacli.exe",
-		"ubaobjtool.exe", "ubastorageproxy.exe", "ubatest.exe", "ubatestapp.exe", "ubavisualizer.exe",
-
-		// --- NÃO COBERTOS POR PARCIAIS ---
-		"unitycrashhandler64.exe", "unitycrashhandler32.exe", "egodumper.exe", "mod_tools.exe",
-		"steamworksexample.exe", "singlefilehost.exe", "t32.exe", "t64.exe", "t64-arm.exe", "w32.exe",
-		"w64.exe", "w64-arm.exe", "cli.exe", "cli-32.exe", "cli-64.exe", "cli-arm64.exe", "gui.exe",
-		"gui-32.exe", "gui-64.exe", "gui-arm64.exe", "pip.exe", "pip3.exe", "pip3.11.exe",
-		"x86_64-w64-mingw32-nmakehlp.exe", "diff.exe", "diff3.exe", "diff4.exe", "cl-filter.exe", "d2u.exe",
-		"u2d.exe", "rsync.exe", "ssh.exe", "ssh-agent.exe", "ssh-keygen.exe", "ideviceactivation.exe",
-		"idevicebackup.exe", "idevicebackup2.exe", "idevicedate.exe", "idevicedebug.exe",
-		"idevicedebugserverproxy.exe", "idevicediagnostics.exe", "ideviceenterrecovery.exe", "idevicefs.exe",
-		"ideviceimagemounter.exe", "ideviceinfo.exe", "ideviceinstaller.exe", "idevicename.exe",
-		"idevicenotificationproxy.exe", "idevicepair.exe", "ideviceprovision.exe", "idevicerestore.exe",
-		"idevicescreenshot.exe", "idevicesyslog.exe", "idevice_id.exe", "ios_webkit_debug_proxy.exe",
-		"iproxy.exe", "irecovery.exe", "itcpconnect.exe", "plistutil.exe", "plist_cmp.exe", "plist_test.exe",
-		"usbmuxd.exe", "clang++.exe", "iree-compile.exe", "ld.lld.exe", "torch-mlir-import-onnx.exe",
-		"interlacedcapture.exe", "timecodeburner.exe", "timecodecapture.exe", "arcoreimg.exe", "sqlite3.exe",
-		"recast.exe"
-	};
 
 #ifdef _WIN32
 
-	auto scanGameFolder = [&](const QString &dirPath) {
-		QDirIterator it(dirPath, QStringList() << "*.exe", QDir::Files, QDirIterator::Subdirectories);
+	knownGameExes.clear();
+	gameNameMap.clear();
 
-		while (it.hasNext()) {
-			QString exePath = it.next();
-
-			if (foundPaths.contains(exePath))
-				continue;
-
-			QString exeName = QFileInfo(exePath).fileName();
-			// Se o nome do executável estiver na lista de ignorados, pule para o próximo.
-			if (ignoreList.contains(exeName.toLower()))
-				continue;
-
-			bool shouldIgnore = false;
-			for (const QString &ignore : ignoreList) {
-				if (!ignore.isEmpty() && exeName.toLower().contains(ignore.toLower())) {
-					shouldIgnore = true;
-					break;
-				}
-			}
-
-			if (shouldIgnore)
-				continue;
-
-			QString desc;
-
-			// Detecta se é um jogo da Steam para usar o nome da pasta como descrição
-			bool isSteamGame = exePath.contains("steamapps/common", Qt::CaseInsensitive);
-
-			if (isSteamGame) {
-				QFileInfo exeInfo(exePath);
-				QDir gameDir = exeInfo.dir();
-
-				// Lista de nomes de pastas de binários comuns para ignorar e subir de nível
-				const QSet<QString> binaryFolderNames = {"bin", "binaries", "win64", "win_x64", "x64", "shipping"};
-
-				// Sobe na árvore de diretórios enquanto o nome da pasta atual for um nome de pasta de binário comum.
-				// Isso lida com casos como ".../GameName/bin/x64/game.exe".
-				while (binaryFolderNames.contains(gameDir.dirName().toLower())) {
-					if (!gameDir.cdUp()) {
-						// Se não for possível subir mais, para o loop
-						break;
-					}
-				}
-				desc = gameDir.dirName();
-			}
-
-			// Caso NÃO seja Steam, ou a pasta falhe, usar a lógica padrão
-			if (desc.isEmpty()) {
-				desc = getFileDescription(exePath);
-				if (desc.isEmpty()) {
-					desc = QFileInfo(exePath).completeBaseName();
-				}
-			}
-
-			foundGames.append({desc, exeName, exePath});
-			foundPaths.insert(exePath);
-
-			emit gameFoundDuringScan(foundGames.size());
-		}
-	};
-
+	// ==== STEAM ====
 	QSettings steamSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Valve\\Steam", QSettings::NativeFormat);
 	QString steamPath = steamSettings.value("InstallPath").toString();
-
 	if (!steamPath.isEmpty()) {
 		QString libraryFile = steamPath + "/steamapps/libraryfolders.vdf";
-
 		QFile f(libraryFile);
 		QStringList libraryPaths;
-
-		// Library principal
 		libraryPaths << steamPath + "/steamapps/common";
 
 		if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
 			QByteArray data = f.readAll();
 			f.close();
-
-			// Extração simples (regex)
 			QRegularExpression re("\"path\"\\s+\"([^\"]+)\"");
 			auto matches = re.globalMatch(QString::fromUtf8(data));
-
 			while (matches.hasNext()) {
 				QString lib = matches.next().captured(1);
 				libraryPaths << lib + "/steamapps/common";
 			}
 		}
 
-		for (const QString &path : libraryPaths) {
-			if (QDir(path).exists())
-				scanGameFolder(path);
+		// Percorre cada biblioteca
+		for (const QString &library : libraryPaths) {
+			if (!QDir(library).exists())
+				continue;
+
+			QDirIterator it(library, QDir::Dirs | QDir::NoDotAndDotDot);
+			while (it.hasNext()) {
+				QString gameFolder = it.next();
+
+				// Procura o executável principal na pasta do jogo
+				QString exePath;
+				QString exeName;
+
+				// 1. Busca primeiro na pasta raiz do jogo
+				QDirIterator rootIt(gameFolder, QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+				while (rootIt.hasNext()) {
+					QString candidate = rootIt.next();
+					QString candidateName = QFileInfo(candidate).fileName();
+					if (!isExeIgnored(candidateName)) {
+						exePath = candidate;
+						exeName = candidateName;
+						break;
+					}
+				}
+
+				// 2. Se não encontrou, busca em subpastas comuns de binários
+				if (exePath.isEmpty()) {
+					const QStringList commonBinarySubfolders = {"bin", "Binaries/Win64", "Binaries/Win32", "x64", "x86"};
+					for (const QString &subfolder : commonBinarySubfolders) {
+						QDir subDir(gameFolder + "/" + subfolder);
+						if (!subDir.exists()) continue;
+
+						QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+						while (subIt.hasNext()) {
+							QString candidate = subIt.next();
+							QString candidateName = QFileInfo(candidate).fileName();
+							if (!isExeIgnored(candidateName)) {
+								exePath = candidate;
+								exeName = candidateName;
+								break;
+							}
+						}
+						if (!exePath.isEmpty()) {
+							break;
+						}
+					}
+				}
+
+				// 3. Como último recurso, faz a busca recursiva (lógica antiga)
+				if (exePath.isEmpty()) {
+					QDirIterator recursiveIt(gameFolder, QStringList() << "*.exe", QDir::Files, QDirIterator::Subdirectories);
+					while (recursiveIt.hasNext()) {
+						QString candidate = recursiveIt.next();
+						QString candidateName = QFileInfo(candidate).fileName();
+						if (!isExeIgnored(candidateName)) {
+							exePath = candidate;
+							exeName = candidateName;
+							break;
+						}
+					}
+				}
+
+				if (exePath.isEmpty() || exeName.isEmpty())
+					continue;
+
+				// Sobe na árvore de diretórios para encontrar o nome real do jogo,
+				// ignorando pastas de binários.
+				QDir gameDir = QFileInfo(exePath).dir();
+				const QSet<QString> binaryFolderNames = {"bin", "binaries", "win64", "win_x64", "x64", "shipping"};
+				while(binaryFolderNames.contains(gameDir.dirName().toLower())) {
+					if (!gameDir.cdUp()) break;
+				}
+				QString friendlyName = gameDir.dirName();
+
+				if (!knownGameExes.contains(exeName)) {
+					foundGames.append({friendlyName, exeName, exePath});
+
+					knownGameExes.insert(exeName);
+					gameNameMap.insert(exeName, friendlyName);
+
+					emit gameFoundDuringScan(foundGames.size());
+				}
+			}
 		}
 	}
 
+	// ==== EPIC ====
 	QString epicFilePath = "C:/ProgramData/Epic/UnrealEngineLauncher/LauncherInstalled.dat";
 	QFile epicFile(epicFilePath);
-
 	if (epicFile.exists() && epicFile.open(QIODevice::ReadOnly)) {
 		QJsonDocument doc = QJsonDocument::fromJson(epicFile.readAll());
 		epicFile.close();
 
 		if (doc.isObject()) {
 			QJsonArray arr = doc.object()["InstallationList"].toArray();
-
 			for (const QJsonValue &v : arr) {
-				QString installDir = v["InstallLocation"].toString();
-				if (!installDir.isEmpty())
-					scanGameFolder(installDir);
+				QString installPath = v.toObject()["InstallLocation"].toString();
+				QString friendlyName = v.toObject()["DisplayName"].toString();
+
+				if (installPath.isEmpty() || !QDir(installPath).exists())
+					continue;
+
+				// Se o nome do JSON estiver vazio, usa o nome da pasta como fallback
+				if (friendlyName.isEmpty()) {
+					friendlyName = QFileInfo(installPath).fileName();
+				}
+
+				QString exePath;
+				QString exeName;
+
+				// 1. Busca primeiro na pasta raiz do jogo
+				QDirIterator rootIt(installPath, QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+				while (rootIt.hasNext()) {
+					QString candidate = rootIt.next();
+					QString candidateName = QFileInfo(candidate).fileName();
+					if (!isExeIgnored(candidateName)) {
+						exePath = candidate;
+						exeName = candidateName;
+						break;
+					}
+				}
+
+				// 2. Se não encontrou, busca em subpastas comuns de binários
+				if (exePath.isEmpty()) {
+					const QStringList commonBinarySubfolders = {"bin", "Binaries/Win64", "Binaries/Win32", "x64", "x86", "Shipping"};
+					for (const QString &subfolder : commonBinarySubfolders) {
+						QDir subDir(installPath + "/" + subfolder);
+						if (!subDir.exists()) continue;
+
+						QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+						while (subIt.hasNext()) {
+							QString candidate = subIt.next();
+							QString candidateName = QFileInfo(candidate).fileName();
+							if (!isExeIgnored(candidateName)) {
+								exePath = candidate;
+								exeName = candidateName;
+								break;
+							}
+						}
+						if (!exePath.isEmpty()) break;
+					}
+				}
+
+				// 3. Como último recurso, faz a busca recursiva
+				if (exePath.isEmpty()) {
+					QDirIterator recursiveIt(installPath, QStringList() << "*.exe", QDir::Files, QDirIterator::Subdirectories);
+					while (recursiveIt.hasNext()) {
+						QString candidate = recursiveIt.next();
+						QString candidateName = QFileInfo(candidate).fileName();
+						if (!isExeIgnored(candidateName)) {
+							exePath = candidate;
+							exeName = candidateName;
+							break;
+						}
+					}
+				}
+
+				if (!exeName.isEmpty() && !knownGameExes.contains(exeName)) {
+					foundGames.append({friendlyName, exeName, exePath});
+
+					knownGameExes.insert(exeName);
+					gameNameMap.insert(exeName, friendlyName);
+
+					emit gameFoundDuringScan(foundGames.size());
+				}
 			}
 		}
 	}
@@ -252,6 +340,31 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 	return foundGames;
 }
 
+/**
+ * @brief Verifica se um nome de executável deve ser ignorado.
+ *
+ * Esta função auxiliar centraliza a lógica de verificação contra a `ignoreList`,
+ * checando tanto por nomes completos quanto por correspondências parciais.
+ *
+ * @param exeName O nome do arquivo executável a ser verificado.
+ * @return true se o executável deve ser ignorado, false caso contrário.
+ */
+bool isExeIgnored(const QString &exeName) {
+	const QString lowerExeName = exeName.toLower();
+
+	// 1. Verifica se o nome completo está na lista de ignorados (verificação rápida)
+	if (ignoreFullNames.contains(lowerExeName)) {
+		return true;
+	}
+
+	// 2. Verifica se o nome contém alguma das substrings a serem ignoradas
+	for (const QString &substring : ignoreSubstrings) {
+		if (lowerExeName.contains(substring)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 void GameDetector::loadGamesFromConfig()
 {
