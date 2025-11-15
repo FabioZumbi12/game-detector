@@ -25,14 +25,18 @@ jobs:
         python -m pip install aqtinstall
         python -m aqt install-qt windows desktop 6.5.1 win64_msvc2019_64 --outputdir Qt
 
-    # Baixar OBS SDK 31.1.1
-    - name: Download OBS SDK
+    # Baixar OBS SDK 32.0.2
+    - name: Download OBS SDK (32.0.2)
       run: |
-        curl -L -o obs-sdk.zip https://github.com/obsproject/obs-studio/releases/download/31.1.1/obs-sdk-31.1.1.zip
-        powershell -command "Expand-Archive obs-sdk.zip -DestinationPath obs-sdk"
+        curl -L -o obs.zip https://github.com/obsproject/obs-studio/releases/download/32.0.2/OBS-Studio-32.0.2-Windows-x64.zip
+
+    - name: Extract OBS SDK files
+      run: |
+        mkdir obs
+        7z x obs.zip -oobs
 
     - name: Set OBS SDK path
-      run: echo "OBS_PATH=$PWD/obs-sdk" >> $env:GITHUB_ENV
+      run: echo "OBS_PATH=$PWD/obs" >> $env:GITHUB_ENV
 
     # Instalar Inno Setup
     - name: Install Inno Setup
