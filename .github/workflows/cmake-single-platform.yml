@@ -69,7 +69,8 @@ jobs:
             commitsText = "First release — no previous history.";
           }
     
-          core.setOutput("body", `### Changes included in this version\n\n${commitsText}`);
+          const output = `body=### Changes included in this version\n\n${commitsText}\n`;
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, output);
 
     # Criar ou atualizar a Release
     - name: Create or Update Release
