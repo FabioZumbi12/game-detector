@@ -1,75 +1,161 @@
 [English](README.md) | [Português (BR)](README.pt-BR.md) 
 
-# OBS GameDetector – Plugin para OBS Studio
+# 🎮 OBS GameDetector  
+Plugin para detectar jogos instalados e integrar com Twitch · Suporte para OBS Studio
 
-O **GameDetector** é um plugin para o **OBS Studio** que detecta automaticamente jogos em execução no computador e permite acionar automações, trocar cenas, enviar mensagens no chat da Twitch e muito mais.
+---
 
-Ele facilita a vida de streamers ao identificar o jogo sendo jogado e executar ações configuráveis de forma automática.
+## 📘 Sobre o OBS GameDetector
 
-## Funcionalidades
+OBS GameDetector é um plugin para OBS Studio que identifica automaticamente jogos instalados no seu PC (Steam e Epic Games), permitindo:
 
-### Detecção Automática de Jogos
-* Monitoramento contínuo de processos do sistema a cada 5s direto da memória.
-* Suporte a lista **manual** e **automática** de jogos.
-* Identificação de início, encerramento e mudança do jogo ativo.
-* Processamento assíncrono para não travar o OBS.
+- Seleção automática de jogo
+- Integração com Twitch (Client ID + Access Token)
+- Correção e edição de nomes e executáveis detectados
+- Criação automática de metadados
+- Interface amigável dentro do OBS
 
-### Integração com Twitch Chat
-* Envio de mensagens automáticas quando um jogo inicia.
-* Geração rápida de token via navegador.
-* Armazenamento seguro do token no OBS.
-* Permissões mínimas: `user:write:chat`.
+O foco é velocidade, detecção precisa e zero impacto no desempenho.
 
-## Como Usar
+---
 
-### 1. Instalação
+## 📥 Instalação
 
-Baixe o instalador da sessão de releases do Github:
+Após baixar o instalador ou o arquivo ZIP:
 
-[→ Clique aqui para ver as releases](https://github.com/FabioZumbi12/OBSGameDetector/releases)
+### **Instalação pelo instalador (recomendado)**
+1. Baixe o arquivo **OBSGameDetector-Setup.exe** da página de [Releases](releases).
+2. Execute o instalador.
+3. Abra o OBS e confirme que o plugin aparece no menu **Ferramentas → OBS GameDetector**.
 
-Siga as instruções, ou baixe op zip, descompacte o zip e copie as pastas `data` e `obs-plugins` na pasta:
+### **Instalação manual pelo ZIP**
+1. Extraia o ZIP.
+2. Copie:
+   - `obs-plugins/64bit/obs-game-detector.dll` → para a pasta de plugins do OBS  
+   - `data/obs-plugins/obs-game-detector/` → para a pasta de dados do OBS  
+3. Reinicie o OBS.
 
-```
-C:\Program Files\obs-studio\
-```
+---
 
-Reinicie o OBS.
+## 🔧 Configuração do Twitch
 
-### 2️. Abrindo o painel de configuração
-No OBS:
+O plugin possui dois campos obrigatórios para integração com a Twitch:
 
-**Menu → Ferramentas → Configurações do Game Detector**
+- **Client ID**
+- **Access Token**
 
-Aqui você pode:
+### Como preencher:
 
-* Editar a lista de jogos
-* Escanear por jogos nas pastas conhecidas da Steam e Epic (não escaneia todas pastas do PC)
-* Configurar token da Twitch
-* Salvar alterações
+1. Abra o OBS.
+2. Vá em **Ferramentas → OBS GameDetector**.
+3. No painel de configurações, clique no botão **Gerar Token**.
+4. Você será enviado para:
 
-### 3. Configurar mensagens automáticas na Twitch
-1. Clique em **Gerar Token**
-2. O navegador abre com permissões mínimas
-3. Copie o `ACCESS TOKEN` e o `CLIENT ID` e cole nos campos da configuração
+   👉 https://twitchtokengenerator.com
 
-## Compatibilidade
+5. No site, gere o token normalmente.
+6. Copie **exatamente estes dois campos**:
+   - **ACCESS TOKEN**
+   - **CLIENT ID**
+7. Cole-os nos campos dentro do plugin:
+   - **Client ID**
+   - **Access Token**
+8. Clique em **Salvar**.
 
-* OBS Studio **29+**
-* Windows **10/11**
-* Powershell
-* Compilado com:
-  * OBS SDK
-  * Qt 6
-  * C++17
+⚠️ Nenhuma senha da Twitch é solicitada ou utilizada.  
+⚠️ Somente os dois campos acima são necessários.
 
-## Contribuindo
+---
 
-Pull requests e sugestões são bem-vindas!
+## 🎮 Tabela de Jogos Detectados
 
-Você pode:
+Após a varredura, o plugin exibe uma tabela com todos os jogos encontrados.
 
-* Reportar bugs  
-* Sugerir novas funções  
-* Melhorar documentação  
-* Criar testes  
+A detecção é rápida pois o plugin **não varre o computador inteiro**, apenas:
+
+- ✔️ Pastas da Steam Library
+- ✔️ Diretórios padrão da Epic Games
+
+Isso evita lentidão, falsos positivos e leituras desnecessárias.
+
+---
+
+## ✏️ Edição dos Jogos Encontrados
+
+A tabela permite editar:
+
+### ✔️ Nome do jogo  
+Quando o nome detectado não coincide com o nome desejado.
+
+### ✔️ Nome do executável (.exe)  
+Útil quando o jogo possui múltiplos executáveis ou quando o arquivo detectado não é o principal.
+
+### ✔️ Caminho completo  
+Somente para ajustes manuais, caso necessário.
+
+As alterações são salvas automaticamente.
+
+---
+
+## 🔄 Re-scan de jogos
+
+Você pode executar a busca novamente a qualquer momento:
+
+📌 Clique no botão **Re-scan** dentro da janela do plugin.
+
+---
+
+## 🖼️ Screenshots (placeholders)
+
+> Substitua as imagens abaixo com capturas reais.
+
+### Tela principal:
+![main-ui](./screenshots/main.png)
+
+### Detecção de jogos:
+![games-list](./screenshots/games.png)
+
+### Configuração:
+![settings](./screenshots/settings.png)
+
+---
+
+## 🧩 Compatibilidade
+
+| Recurso                   | Suporte |
+|---------------------------|---------|
+| OBS Studio               | ✔️ 29+  |
+| Windows                  | ✔️ 10/11 64-bit |
+| Steam Games              | ✔️ |
+| Epic Games               | ✔️ |
+| Outros launchers         | ❌ (planejado para futuro) |
+
+---
+
+## 🛠️ Tecnologias utilizadas
+
+- C++  
+- libobs  
+- Qt6  
+- OBS Frontend API  
+- Twitch API  
+- Inno Setup  
+
+---
+
+## 🤝 Créditos
+
+Desenvolvido por **Fábio F. Magalhães**.  
+Contribuições e PRs são bem-vindos!
+
+---
+
+## 📄 Licença
+
+Este projeto é distribuído sob a licença **MIT**.
+
+---
+
+## ⭐ Suporte o projeto
+
+Se o plugin te ajudou, considere deixar uma estrela ⭐ no GitHub!
