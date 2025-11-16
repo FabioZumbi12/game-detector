@@ -24,6 +24,8 @@ PrivilegesRequired=admin
 DirExistsWarning=no
 UninstallFilesDir={app}\GameDetector-Uninstaller
 UninstallDisplayName=Game Detector
+SetupIconFile=img\game.ico
+UninstallDisplayIcon={uninstallexe}
 
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"

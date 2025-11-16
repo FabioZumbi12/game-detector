@@ -16,6 +16,7 @@
 !LICENSE
 !README*.md
 !setup.iss
+!img
 
 # Exclude lock files
 *.lock.json
