@@ -8,8 +8,6 @@ on:
 
 env:
   BUILD_TYPE: Release
-  QT_VERSION: 6.5.1
-  QT_MODULES: "qtbase qtwidgets"
 
 jobs:
   build:
@@ -27,23 +25,35 @@ jobs:
 
     # Configurar CMake
     - name: Configure CMake
-      run: cmake -B build `
-        -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
     # Compilar plugin
     - name: Build
       run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
-    # Upload do ZIP gerado pelo build
-    - name: Upload ZIP artifact
-      uses: actions/upload-artifact@v4
+    # Criar ou atualizar a Release
+    - name: Create or Update Release
+      id: create_release
+      uses: ncipollo/release-action@v1
       with:
-        name: OBSGameDetector-Zip
-        path: setup/OBSGameDetector.zip
+        tag: latest
+        name: OBSGameDetector
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-    # Upload do instalador .exe criado pelo Inno Setup
-    - name: Upload installer
-      uses: actions/upload-artifact@v4
+    # Upload do ZIP para a Release
+    - name: Upload ZIP to Release
+      uses: ncipollo/release-action@v1
       with:
-        name: OBSGameDetector-Installer
-        path: setup/OBSGameDetector-Setup.exe
+        tag: latest
+        files: setup/OBSGameDetector.zip
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    # Upload do Installer para a Release
+    - name: Upload Installer to Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: latest
+        files: setup/OBSGameDetector-Setup.exe
+        token: ${{ secrets.GITHUB_TOKEN }}
