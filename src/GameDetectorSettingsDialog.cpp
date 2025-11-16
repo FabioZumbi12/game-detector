@@ -15,6 +15,7 @@
 #include <QDesktopServices>
 #include <QCheckBox>
 #include <QFileDialog>
+#include <QFormLayout>
 #include <obs-data.h>
 
 const QUrl TOKEN_GENERATOR_URL("https://twitchtokengenerator.com/quick/S2xsq6rhwz");
@@ -72,22 +73,22 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	separator2->setFrameShadow(QFrame::Sunken);
 	mainLayout->addWidget(separator2);
 
-	// --- Seção do Client ID ---
-	mainLayout->addWidget(new QLabel(obs_module_text("Settings.TwitchConnection")));
-	QHBoxLayout *clientIdHeaderLayout = new QHBoxLayout();
-	clientIdHeaderLayout->addWidget(new QLabel(obs_module_text("Settings.ClientID")));
-	clientIdInput = new QLineEdit();
-	clientIdHeaderLayout->addWidget(clientIdInput);
-	mainLayout->addLayout(clientIdHeaderLayout);
-
 	// --- Seção do Token ---
-	QHBoxLayout *tokenHeaderLayout = new QHBoxLayout();
-	tokenHeaderLayout->addWidget(new QLabel(obs_module_text("Settings.Token")));
+	mainLayout->addWidget(new QLabel(obs_module_text("Settings.TwitchConnection")));
+
+	// Usar QFormLayout para alinhar rótulos e campos de entrada
+	QFormLayout *twitchFormLayout = new QFormLayout();
+	twitchFormLayout->setLabelAlignment(Qt::AlignRight); // Alinha os rótulos à direita
+
 	tokenInput = new QLineEdit();
 	tokenInput->setEchoMode(QLineEdit::Password);
 	tokenInput->setPlaceholderText(obs_module_text("Settings.Token.Placeholder"));
-	tokenHeaderLayout->addWidget(tokenInput);
-	mainLayout->addLayout(tokenHeaderLayout);
+	twitchFormLayout->addRow(obs_module_text("Settings.Token"), tokenInput);
+
+	clientIdInput = new QLineEdit();
+	twitchFormLayout->addRow(obs_module_text("Settings.ClientID"), clientIdInput);
+
+	mainLayout->addLayout(twitchFormLayout);
 
 	QPushButton *generateTokenButton = new QPushButton(obs_module_text("Settings.GenerateToken"));
 	mainLayout->addWidget(generateTokenButton);

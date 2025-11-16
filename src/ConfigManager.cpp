@@ -46,7 +46,7 @@ void ConfigManager::load()
 		}
 		// Garante que a chave de execução automática exista
 		if (!obs_data_has_user_value(settings, EXECUTE_AUTOMATICALLY_KEY)) {
-			obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, true);
+			obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);
 		}
 	}
 }
@@ -172,7 +172,7 @@ QString ConfigManager::getNoGameCommand() const
 bool ConfigManager::getExecuteAutomatically() const
 {
 	if (!settings)
-		return true;
+		return false;
 
 	return obs_data_get_bool(settings, EXECUTE_AUTOMATICALLY_KEY);
 }

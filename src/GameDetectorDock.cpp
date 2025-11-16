@@ -140,6 +140,8 @@ void GameDetectorDock::onNoGameDetected()
 		if (!noGameCommand.isEmpty()) {
 			TwitchChatBot::get().sendMessage(noGameCommand);
 		}
+	} else {
+		executeCommandButton->setEnabled(true);
 	}
 }
 
