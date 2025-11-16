@@ -26,7 +26,7 @@ Após baixar o instalador ou o arquivo ZIP:
 ### **Instalação pelo instalador (recomendado)**
 1. Baixe o arquivo **GameDetector-Setup.exe** da página de [Releases](../../releases).
 2. Execute o instalador.
-3. Abra o OBS e confirme que o plugin aparece no menu **Ferramentas → GameDetector**.
+3. Abra o OBS e confirme que o plugin aparece no menu **Ferramentas → Configurações de Game Detector**.
 
 ### **Instalação manual pelo ZIP**
 1. Extraia o ZIP.

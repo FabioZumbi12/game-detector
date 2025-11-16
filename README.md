@@ -26,7 +26,7 @@ After downloading the installer or ZIP file:
 ### **Installer Setup (recommended)**
 1. Download **GameDetector-Setup.exe** from the [Releases](../../releases) page.
 2. Run the installer.
-3. Open OBS and confirm the plugin appears under **Tools → OBS GameDetector**.
+3. Open OBS and confirm the plugin appears under **Tools → Settings for Game Detector**.
 
 ### **Manual ZIP Installation**
 1. Extract the ZIP.
