@@ -38,7 +38,7 @@ jobs:
     - name: Upload ZIP artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OBSGameDetector
+        name: OBSGameDetector-Zip
         path: setup/OBSGameDetector.zip
 
     # Upload do instalador .exe criado pelo Inno Setup
