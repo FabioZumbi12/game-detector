@@ -16,8 +16,8 @@
 #include <QHeaderView>
 #include <QStyle>
 #include <QCheckBox>
-
-static QLabel *g_statusLabel = nullptr;
+#include <QMessageBox>
+#include "TwitchAuthManager.h"
 
 GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 {
@@ -26,9 +26,9 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	mainLayout->setSpacing(10);
 	this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
 
-	g_statusLabel = new QLabel(obs_module_text("Status.Waiting"));
-	g_statusLabel->setWordWrap(true);
-	mainLayout->addWidget(g_statusLabel);
+	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
+	statusLabel->setWordWrap(true);
+	mainLayout->addWidget(statusLabel);
 
 	QFrame *separator1 = new QFrame();
 	separator1->setFrameShape(QFrame::HLine);
@@ -75,7 +75,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	mainLayout->addWidget(autoExecuteCheckbox);
 
 	executeCommandButton = new QPushButton(obs_module_text("Dock.ExecuteCommand"));
-	executeCommandButton->setEnabled(false);
 	mainLayout->addWidget(executeCommandButton);
 	connect(executeCommandButton, &QPushButton::clicked, this,
 		&GameDetectorDock::onExecuteCommandClicked);
@@ -89,7 +88,9 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	connect(&GameDetector::get(), &GameDetector::gameDetected, this, &GameDetectorDock::onGameDetected);
 	connect(&GameDetector::get(), &GameDetector::noGameDetected, this, &GameDetectorDock::onNoGameDetected);
 	connect(&TwitchChatBot::get(), &TwitchChatBot::categoryUpdateFinished, this,
-		&GameDetectorDock::onCategoryUpdateFinished);
+		QOverload<bool, const QString &, const QString &>::of(&GameDetectorDock::onCategoryUpdateFinished));
+	connect(&TwitchChatBot::get(), &TwitchChatBot::authenticationRequired, this,
+		&GameDetectorDock::onAuthenticationRequired);
 
 	// Timer para salvar com delay
 	saveDelayTimer = new QTimer(this);
@@ -118,13 +119,12 @@ void GameDetectorDock::saveDockSettings()
 	ConfigManager::get().save(settings);
 
 	// Feedback visual no label de status
-	QString originalStatus = g_statusLabel->text();
-	g_statusLabel->setText(obs_module_text("Dock.SettingsSaved"));
+	statusLabel->setText(obs_module_text("Dock.SettingsSaved"));
 
 	QTimer::singleShot(2000, this, [this]() {
 		// Restaura o status original, verificando se não mudou nesse meio tempo
-		if (g_statusLabel->text() == obs_module_text("Dock.SettingsSaved")) {
-			g_statusLabel->setText(this->detectedGameName.isEmpty() ? obs_module_text("Status.Waiting") : QString(obs_module_text("Status.Playing")).arg(this->detectedGameName));
+		if (statusLabel->text() == obs_module_text("Dock.SettingsSaved")) {
+			statusLabel->setText(this->detectedGameName.isEmpty() ? obs_module_text("Status.Waiting") : QString(obs_module_text("Status.Playing")).arg(this->detectedGameName));
 		}
 	});
 }
@@ -137,13 +137,12 @@ void GameDetectorDock::onSettingsChanged()
 void GameDetectorDock::onGameDetected(const QString &gameName, const QString &processName)
 {
 	this->detectedGameName = gameName;
-	g_statusLabel->setText(QString(obs_module_text("Status.Playing")).arg(gameName));
+	statusLabel->setText(QString(obs_module_text("Status.Playing")).arg(gameName));
 
-	executeCommandButton->setEnabled(true);
 	if (autoExecuteCheckbox->isChecked()) {
 		int actionMode = ConfigManager::get().getTwitchActionMode();
 		if (actionMode == 0) { // Enviar comando
-			executeGameCommand(gameName);
+			executeAction(gameName);
 		} else { // Alterar categoria
 			TwitchChatBot::get().updateCategory(gameName);
 		}
@@ -153,8 +152,7 @@ void GameDetectorDock::onGameDetected(const QString &gameName, const QString &pr
 void GameDetectorDock::onNoGameDetected()
 {
 	this->detectedGameName.clear();
-	g_statusLabel->setText(obs_module_text("Status.Waiting"));
-	executeCommandButton->setEnabled(false);
+	statusLabel->setText(obs_module_text("Status.Waiting"));
 
 	// Executa o comando de "sem jogo"
 	QString noGameCommand = noGameCommandInput->text();
@@ -162,27 +160,27 @@ void GameDetectorDock::onNoGameDetected()
 		int actionMode = ConfigManager::get().getTwitchActionMode();
 		if (actionMode == 0) { // Enviar comando
 			if (!noGameCommand.isEmpty())
-			TwitchChatBot::get().sendMessage(noGameCommand);
+				TwitchChatBot::get().sendChatMessage(noGameCommand);
 		} else { // Alterar categoria
 			TwitchChatBot::get().updateCategory("Just Chatting");
 		}
-	} else {
-		executeCommandButton->setEnabled(true);
 	}
 }
 
 void GameDetectorDock::onExecuteCommandClicked()
 {
+	int actionMode = ConfigManager::get().getTwitchActionMode();
 	if (!detectedGameName.isEmpty()) {
-		int actionMode = ConfigManager::get().getTwitchActionMode();
 		if (actionMode == 0) { // Enviar comando
-			executeGameCommand(detectedGameName);
+			executeAction(detectedGameName);
 		} else { // Alterar categoria
 			TwitchChatBot::get().updateCategory(detectedGameName);
 		}
 	} else {
-		int actionMode = ConfigManager::get().getTwitchActionMode();
-		if (actionMode == 1) { // Alterar categoria para "sem jogo"
+		QString noGameCommand = noGameCommandInput->text();
+		if (actionMode == 0) {
+			TwitchChatBot::get().sendChatMessage(noGameCommand);
+		} else { // Alterar categoria
 			TwitchChatBot::get().updateCategory("Just Chatting");
 		}
 	}
@@ -210,13 +208,13 @@ void GameDetectorDock::loadSettingsFromConfig()
 	updateActionModeUI(twitchActionComboBox->currentIndex());
 }
 
-void GameDetectorDock::executeGameCommand(const QString &gameName)
+void GameDetectorDock::executeAction(const QString &gameName)
 {
 	QString commandTemplate = commandInput->text();
 	if (commandTemplate.isEmpty()) return;
 
 	QString command = commandTemplate.replace("{game}", gameName);
-	TwitchChatBot::get().sendMessage(command);
+	TwitchChatBot::get().sendChatMessage(command);
 }
 
 void GameDetectorDock::updateActionModeUI(int index)
@@ -233,20 +231,36 @@ void GameDetectorDock::updateActionModeUI(int index)
 						: obs_module_text("Dock.ExecuteCommand"));
 }
 
-void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gameName)
+void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString)
 {
 	if (success) {
 		QString statusText = QString(obs_module_text("Dock.CategoryUpdated")).arg(gameName);
-		g_statusLabel->setText(statusText);
+		statusLabel->setText(statusText);
 	} else {
-		QString statusText = QString(obs_module_text("Dock.CategoryUpdateFailed"));
-		g_statusLabel->setText(statusText);
+		QString statusText = errorString.arg(gameName);
+		statusLabel->setText(statusText);
 	}
 
 	// Retorna ao status normal após alguns segundos
 	QTimer::singleShot(3000, this, [this]() {
-		g_statusLabel->setText(this->detectedGameName.isEmpty() ? obs_module_text("Status.Waiting") : QString(obs_module_text("Status.Playing")).arg(this->detectedGameName));
+		statusLabel->setText(this->detectedGameName.isEmpty() ? obs_module_text("Status.Waiting") : QString(obs_module_text("Status.Playing")).arg(this->detectedGameName));
 	});
+}
+
+void GameDetectorDock::onAuthenticationRequired()
+{
+	QMessageBox msgBox;
+	msgBox.setWindowTitle(obs_module_text("Auth.Required.Title"));
+	msgBox.setText(obs_module_text("Auth.Required.Text"));
+	msgBox.setInformativeText(obs_module_text("Auth.Required.Info"));
+	msgBox.setIcon(QMessageBox::Question);
+	msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+	msgBox.setDefaultButton(QMessageBox::Yes);
+	msgBox.button(QMessageBox::Yes)->setText(obs_module_text("Auth.Required.Connect"));
+	msgBox.button(QMessageBox::No)->setText(obs_module_text("Auth.Cancel"));
+	if (msgBox.exec() == QMessageBox::Yes) {
+		TwitchAuthManager::get().startAuthentication();
+	}
 }
 
 GameDetectorDock::~GameDetectorDock()

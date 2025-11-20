@@ -15,6 +15,7 @@ class GameDetectorDock : public QWidget {
 	Q_OBJECT
 
 private:
+	QLabel *statusLabel = nullptr;
 	QLabel *twitchActionLabel = nullptr;
 	QComboBox *twitchActionComboBox = nullptr;
 	QLabel *commandLabel = nullptr;
@@ -27,7 +28,7 @@ private:
 	QString configPath;
 	QString detectedGameName;
 
-	void executeGameCommand(const QString &gameName);
+	void executeAction(const QString &gameName);
 	void updateActionModeUI(int index);
 
 	QTimer *saveDelayTimer = nullptr;
@@ -44,7 +45,8 @@ private slots:
 	void onGameDetected(const QString &gameName, const QString &processName);
 	void onNoGameDetected();
 	void onExecuteCommandClicked();
-	void onCategoryUpdateFinished(bool success, const QString &gameName);
+	void onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString);
+	void onAuthenticationRequired();
 };
 
 #endif // GAMEDETECTORDOCK_H

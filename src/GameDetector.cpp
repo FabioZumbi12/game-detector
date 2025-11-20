@@ -101,7 +101,7 @@ void GameDetector::stopScanning()
 // Lista de substrings para ignorar. Se qualquer parte do nome do executável
 // corresponder a uma dessas strings, ele será ignorado.
 const QStringList ignoreSubstrings = {
-	"7z", "presentmon", "dxsetup", "errorreporter", "crashpad", "buildpatchtool", "redmod", "dotnet", "bepinex",
+	"launcher.exe", "7z", "presentmon", "dxsetup", "errorreporter", "crashpad", "buildpatchtool", "redmod", "dotnet", "bepinex",
 	"vcredist", "vc_redist", "redist", "prereq", "crashreport", "swarm", "unrealpak", "bink2", "bootstrap",
 	"shadercompile", "epicwebhelper", "svn", "python", "dumpmini", "datacollector", "testhost", "unrealgame",
 	"shipping" // "Shipping.exe" é muito comum em jogos Unreal, mas o nome do jogo vem antes.
@@ -110,10 +110,10 @@ const QStringList ignoreSubstrings = {
 // Lista de nomes de executáveis completos para ignorar.
 // A correspondência deve ser exata (ignorando maiúsculas/minúsculas).
 const QSet<QString> ignoreFullNames = {
-	"7za.exe", "compatibility.exe", "ispc.exe", "openssl.exe", "redprelauncher.exe", "scc.exe",
+	"7za.exe", "compatibility.exe", "ispc.exe", "openssl.exe", "scc.exe",
 	"interchangeworker.exe", "zen.exe", "applicationframehost.exe", "shellexperiencehost.exe",
 	"ndp462-kb3151800-x86-x64-allos-enu.exe", "ndp472-kb4054530-x86-x64-allos-enu.exe",
-	"ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe", "eaanticheat.gameservicelauncher.exe",
+	"ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe"
 	"eaanticheat.installer.exe", "common.extprotocol.executor.exe", "eztransxp.extprotocol.exe",
 	"lec.extprotocol.exe", "unrealandroidfiletool.exe", "unrealbuildtool.exe", "automationtool.exe",
 	"csvcollate.exe", "csvconvert.exe", "csvfilter.exe", "csvinfo.exe", "csvsplit.exe", "csvtosvg.exe",
