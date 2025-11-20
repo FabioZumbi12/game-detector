@@ -31,8 +31,9 @@ private:
 	QPushButton *removeGameButton = nullptr;
 	QPushButton *clearTableButton = nullptr;
 	QPushButton *rescanButton = nullptr;
-	QLineEdit *clientIdInput = nullptr;
-	QLineEdit *tokenInput = nullptr;
+	QLabel      *authStatusLabel = nullptr;
+	QPushButton *authButton      = nullptr;
+	QPushButton *disconnectButton = nullptr;
 	QPushButton *okButton = nullptr;
 	QPushButton *cancelButton = nullptr;
 
@@ -41,6 +42,8 @@ private slots:
 	void onRemoveGameClicked();
 	void onClearTableClicked();
 	void onAutomaticScanFinished(const QList<std::tuple<QString, QString, QString>> &foundGames);
+	void onAuthenticationFinished(bool success, const QString &username);
+	void onDisconnectClicked();
 };
 
 #endif // GAMEDETECTORSETTINGSDIALOG_H

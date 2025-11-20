@@ -2,6 +2,7 @@
 #include "GameDetector.h"
 #include "IconProvider.h"
 #include "ConfigManager.h"
+#include "TwitchAuthManager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -17,8 +18,6 @@
 #include <QFileDialog>
 #include <QFormLayout>
 #include <obs-data.h>
-
-const QUrl TOKEN_GENERATOR_URL("https://twitchtokengenerator.com/quick/KVw1MCvQBL");
 
 GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialog(parent)
 {
@@ -76,24 +75,21 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	// --- Seção do Token ---
 	mainLayout->addWidget(new QLabel(obs_module_text("Settings.TwitchConnection")));
 
-	// Usar QFormLayout para alinhar rótulos e campos de entrada
-	QFormLayout *twitchFormLayout = new QFormLayout();
-	twitchFormLayout->setLabelAlignment(Qt::AlignRight); // Alinha os rótulos à direita
+	authStatusLabel = new QLabel(obs_module_text("Auth.NotConnected"));
+	mainLayout->addWidget(authStatusLabel);
 
-	tokenInput = new QLineEdit();
-	tokenInput->setEchoMode(QLineEdit::Password);
-	tokenInput->setPlaceholderText(obs_module_text("Settings.Token.Placeholder"));
-	twitchFormLayout->addRow(obs_module_text("Settings.Token"), tokenInput);
+	QHBoxLayout *authButtonsLayout = new QHBoxLayout();
+	authButton = new QPushButton(obs_module_text("Auth.Connect"));
+	authButtonsLayout->addWidget(authButton);
 
-	clientIdInput = new QLineEdit();
-	twitchFormLayout->addRow(obs_module_text("Settings.ClientID"), clientIdInput);
+	disconnectButton = new QPushButton(obs_module_text("Auth.Disconnect"));
+	authButtonsLayout->addWidget(disconnectButton);
+	authButtonsLayout->addStretch(1);
+	mainLayout->addLayout(authButtonsLayout);
 
-	mainLayout->addLayout(twitchFormLayout);
-
-	QPushButton *generateTokenButton = new QPushButton(obs_module_text("Settings.GenerateToken"));
-	mainLayout->addWidget(generateTokenButton);
-
-	mainLayout->addWidget(new QLabel(obs_module_text("Settings.Token.HelpText")));
+	QLabel *helpLabel = new QLabel(obs_module_text("Auth.HelpText"));
+	helpLabel->setWordWrap(true);
+	mainLayout->addWidget(helpLabel);
 
 	mainLayout->addStretch(1);
 	QLabel *developerLabel = new QLabel(
@@ -119,8 +115,11 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 		rescanButton->setText(obs_module_text("Settings.Scanning"));
 		GameDetector::get().rescanForGames();
 	});
-	connect(generateTokenButton, &QPushButton::clicked, this, []() { QDesktopServices::openUrl(TOKEN_GENERATOR_URL); });
+	connect(authButton, &QPushButton::clicked, &TwitchAuthManager::get(), &TwitchAuthManager::startAuthentication);
+
+	connect(disconnectButton, &QPushButton::clicked, this, &GameDetectorSettingsDialog::onDisconnectClicked);
 	connect(&GameDetector::get(), &GameDetector::automaticScanFinished, this, &GameDetectorSettingsDialog::onAutomaticScanFinished);
+	connect(&TwitchAuthManager::get(), &TwitchAuthManager::authenticationFinished, this, &GameDetectorSettingsDialog::onAuthenticationFinished);
 
 	connect(okButton, &QPushButton::clicked, this, [this]() {
 		saveSettings();
@@ -135,10 +134,15 @@ GameDetectorSettingsDialog::~GameDetectorSettingsDialog() {}
 
 void GameDetectorSettingsDialog::loadSettings()
 {
-	clientIdInput->setText(ConfigManager::get().getClientId());
-	tokenInput->setText(ConfigManager::get().getToken());
+	QString userId = ConfigManager::get().getUserId();
+	QString loginName = ConfigManager::get().getTwitchChannelLogin();
 
-	bool settingsChanged = false;
+	if (!userId.isEmpty()) {
+		onAuthenticationFinished(true, loginName);
+	} else {
+		onAuthenticationFinished(false, "");
+	}
+
 	obs_data_array_t *gamesArray = ConfigManager::get().getManualGames();
 	if (gamesArray) {
 		manualGamesTable->setRowCount(0);
@@ -161,15 +165,10 @@ void GameDetectorSettingsDialog::loadSettings()
 				manualGamesTable->setItem(newRow, 1, new QTableWidgetItem(exeName));
 				manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exePath));
 			} else {
+				// O jogo não existe mais, remove da lista
 				obs_data_array_erase(gamesArray, i);
-				settingsChanged = true;
 			}
 			obs_data_release(item);
-		}
-		if (settingsChanged) {
-			obs_data_t *settings = ConfigManager::get().getSettings();
-			obs_data_set_array(settings, "manual_games_list", gamesArray);
-			ConfigManager::get().save(settings);
 		}
 		obs_data_array_release(gamesArray);
 	}
@@ -178,9 +177,6 @@ void GameDetectorSettingsDialog::loadSettings()
 void GameDetectorSettingsDialog::saveSettings()
 {
 	obs_data_t *settings = ConfigManager::get().getSettings();
-
-	obs_data_set_string(settings, "twitch_client_id", clientIdInput->text().toStdString().c_str());
-	obs_data_set_string(settings, "twitch_access_token", tokenInput->text().toStdString().c_str());
 
 	obs_data_array_t *gamesArray = obs_data_array_create();
 	for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
@@ -284,4 +280,32 @@ void GameDetectorSettingsDialog::onAutomaticScanFinished(const QList<std::tuple<
 
 	rescanButton->setEnabled(true);
 	rescanButton->setText(obs_module_text("Settings.ScanGames"));
+}
+
+void GameDetectorSettingsDialog::onAuthenticationFinished(bool success, const QString &username)
+{
+	if (success) {
+		authStatusLabel->setText(QString(obs_module_text("Auth.ConnectedAs")).arg(username));
+		authButton->setText(obs_module_text("Auth.Reconnect"));
+		disconnectButton->setVisible(true);
+	} else {
+		authStatusLabel->setText(obs_module_text("Auth.NotConnected"));
+		authButton->setText(obs_module_text("Auth.Connect"));
+		disconnectButton->setVisible(false);
+		if (!username.isEmpty()) { // Se username não está vazio, significa que é uma mensagem de erro
+			blog(LOG_WARNING, "[GameDetector/Auth] Falha na autenticacao: %s", username.toStdString().c_str());
+		}
+	}
+}
+
+void GameDetectorSettingsDialog::onDisconnectClicked()
+{
+	// Limpa os dados de autenticação em memória e persistidos no AuthManager
+	// (que por sua vez, limpa o ConfigManager)
+	TwitchAuthManager::get().clearAuthentication();
+
+	// Atualiza a UI para o estado "não conectado"
+	onAuthenticationFinished(false, "");
+
+	blog(LOG_INFO, "[GameDetector/Auth] Usuário desconectado.");
 }
