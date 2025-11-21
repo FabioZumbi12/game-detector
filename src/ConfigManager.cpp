@@ -20,7 +20,7 @@ void ConfigManager::load()
 	this->settings = obs_data_create_from_json_file(obs_module_config_path("config.json"));
 
 	if (!settings) {
-		blog(LOG_INFO, "[GameDetector] Nenhuma config encontrada. Criando nova...");
+		blog(LOG_INFO, "[GameDetector] No config found. Creating new one...");
 		settings = obs_data_create();
 
 		// Defaults
@@ -37,7 +37,7 @@ void ConfigManager::load()
 		return;
 	}
 
-	blog(LOG_INFO, "[GameDetector] Configurações carregadas.");
+	blog(LOG_INFO, "[GameDetector] Settings loaded.");
 
 	// ---------------------------
 	// Garantir chaves existentes
@@ -84,27 +84,29 @@ void ConfigManager::setSettings(obs_data_t *settings_data)
 void ConfigManager::save(obs_data_t *data)
 {
 	if (!data) {
-		blog(LOG_ERROR, "[GameDetector] Tentativa de salvar config nula.");
+		blog(LOG_ERROR, "[GameDetector] Attempt to save null config.");
 		return;
 	}
 
 	const char *config_path_c = obs_module_config_path("config.json");
 	if (!config_path_c) {
-		blog(LOG_ERROR, "[GameDetector] Caminho inválido ao salvar config.");
+		blog(LOG_ERROR, "[GameDetector] Invalid path when saving config.");
 		return;
 	}
 
 	QString path = QString::fromUtf8(config_path_c);
 	QFileInfo info(path);
 	QDir dir = info.dir();
-
+	
 	if (!dir.exists())
 		dir.mkpath(".");
 
-	if (obs_data_save_json(data, config_path_c))
+	if (obs_data_save_json(data, config_path_c)) {
 		blog(LOG_INFO, "[GameDetector] Config salva em: %s", config_path_c);
-	else
-		blog(LOG_WARNING, "[GameDetector] Falha ao salvar config em: %s", config_path_c);
+		emit settingsSaved(); // Notifica que as configurações foram salvas
+	} else {
+		blog(LOG_WARNING, "[GameDetector] Failed to save config to: %s", config_path_c);
+	}
 }
 
 void ConfigManager::save(const QString &token, const QString &command)

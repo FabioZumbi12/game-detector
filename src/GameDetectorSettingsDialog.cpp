@@ -289,11 +289,11 @@ void GameDetectorSettingsDialog::onAuthenticationFinished(bool success, const QS
 		authButton->setText(obs_module_text("Auth.Reconnect"));
 		disconnectButton->setVisible(true);
 	} else {
-		authStatusLabel->setText(obs_module_text("Auth.NotConnected"));
-		authButton->setText(obs_module_text("Auth.Connect"));
-		disconnectButton->setVisible(false);
-		if (!username.isEmpty()) { // Se username não está vazio, significa que é uma mensagem de erro
-			blog(LOG_WARNING, "[GameDetector/Auth] Falha na autenticacao: %s", username.toStdString().c_str());
+		authStatusLabel->setText(obs_module_text("Auth.NotConnected")); // Not Connected
+		authButton->setText(obs_module_text("Auth.Connect"));           // Connect with Twitch
+		disconnectButton->setVisible(false);                            // Disconnect
+		if (!username.isEmpty()) { // If username is not empty, it means it's an error message
+			blog(LOG_WARNING, "[GameDetector/Auth] Authentication failed: %s", username.toStdString().c_str());
 		}
 	}
 }
@@ -303,9 +303,9 @@ void GameDetectorSettingsDialog::onDisconnectClicked()
 	// Limpa os dados de autenticação em memória e persistidos no AuthManager
 	// (que por sua vez, limpa o ConfigManager)
 	TwitchAuthManager::get().clearAuthentication();
-
+	
 	// Atualiza a UI para o estado "não conectado"
 	onAuthenticationFinished(false, "");
 
-	blog(LOG_INFO, "[GameDetector/Auth] Usuário desconectado.");
+	blog(LOG_INFO, "[GameDetector/Auth] User disconnected.");
 }

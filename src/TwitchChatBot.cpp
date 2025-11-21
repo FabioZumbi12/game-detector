@@ -26,7 +26,7 @@ void TwitchChatBot::sendChatMessage(const QString &message)
 	QString senderId = broadcasterId; // A mensagem é enviada pelo próprio dono do canal
 
 	if (broadcasterId.isEmpty()) {
-		blog(LOG_WARNING, "[GameDetector/ChatBot] Tentativa de enviar mensagem sem autenticação.");
+		blog(LOG_WARNING, "[GameDetector/ChatBot] Attempt to send message without authentication.");
 		emit authenticationRequired();
 		return;
 	}
@@ -37,9 +37,9 @@ void TwitchChatBot::sendChatMessage(const QString &message)
 	QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>();
 	connect(watcher, &QFutureWatcher<bool>::finished, this, [watcher, message]() {
 		if (watcher->result()) {
-			blog(LOG_INFO, "[GameDetector/ChatBot] Mensagem enviada via API: %s", message.toStdString().c_str());
+			blog(LOG_INFO, "[GameDetector/ChatBot] Message sent via API: %s", message.toStdString().c_str());
 		} else {
-			blog(LOG_WARNING, "[GameDetector/ChatBot] Falha ao enviar mensagem via API.");
+			blog(LOG_WARNING, "[GameDetector/ChatBot] Failed to send message via API.");
 		}
 		watcher->deleteLater();
 	});
@@ -48,14 +48,14 @@ void TwitchChatBot::sendChatMessage(const QString &message)
 
 bool TwitchChatBot::updateCategory(const QString &gameName)
 {
-	blog(LOG_INFO, "[GameDetector/ChatBot] Alterando categoria para: %s", gameName.toStdString().c_str());
+	blog(LOG_INFO, "[GameDetector/ChatBot] Changing category to: %s", gameName.toStdString().c_str());
 
 	// --------------------------
 	// 1. Pede ao AuthManager o gameID
 	// --------------------------
 
 	if (TwitchAuthManager::get().getUserId().isEmpty()) {
-		blog(LOG_WARNING, "[GameDetector/ChatBot] Tentativa de alterar categoria sem autenticação.");
+		blog(LOG_WARNING, "[GameDetector/ChatBot] Attempt to change category without authentication.");
 		emit authenticationRequired();
 		return false;
 	}
@@ -68,7 +68,7 @@ bool TwitchChatBot::updateCategory(const QString &gameName)
 		QString gameId = gameIdWatcher->result();
 
 		if (gameId.isEmpty()) {
-			blog(LOG_ERROR, "[GameDetector/ChatBot] GameID não encontrado para '%s'.", gameName.toStdString().c_str());
+			blog(LOG_ERROR, "[GameDetector/ChatBot] GameID not found for '%s'.", gameName.toStdString().c_str());
 			emit categoryUpdateFinished(false, gameName, obs_module_text("Dock.CategoryUpdateFailed.GameNotFound"));
 			return;
 		}
@@ -82,10 +82,10 @@ bool TwitchChatBot::updateCategory(const QString &gameName)
 		QFutureWatcher<bool> *updateWatcher = new QFutureWatcher<bool>();
 		connect(updateWatcher, &QFutureWatcher<bool>::finished, this, [this, updateWatcher, gameName]() {
 			if (updateWatcher->result()) {
-				blog(LOG_INFO, "[GameDetector/ChatBot] Categoria atualizada com sucesso para '%s'.", gameName.toStdString().c_str());
+				blog(LOG_INFO, "[GameDetector/ChatBot] Category updated successfully to '%s'.", gameName.toStdString().c_str());
 				emit categoryUpdateFinished(true, gameName);
 			} else {
-				blog(LOG_ERROR, "[GameDetector/ChatBot] Falha ao atualizar categoria para '%s'.", gameName.toStdString().c_str());
+				blog(LOG_ERROR, "[GameDetector/ChatBot] Failed to update category for '%s'.", gameName.toStdString().c_str());
 				emit categoryUpdateFinished(false, gameName, obs_module_text("Dock.CategoryUpdateFailed"));
 			}
 			updateWatcher->deleteLater(); // Limpa o watcher auxiliar

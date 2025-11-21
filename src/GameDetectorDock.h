@@ -11,6 +11,8 @@
 #include <QCheckBox>
 #include <obs-module.h>
 
+class GameDetectorSettingsDialog; // Forward declaration
+
 class GameDetectorDock : public QWidget {
 	Q_OBJECT
 
@@ -24,6 +26,8 @@ private:
 	QLineEdit *noGameCommandInput = nullptr;
 	QPushButton *executeCommandButton = nullptr;
 	QCheckBox *autoExecuteCheckbox = nullptr;
+	QPushButton *settingsButton = nullptr;
+	GameDetectorSettingsDialog *settingsDialog = nullptr;
 
 	QString configPath;
 	QString detectedGameName;
@@ -31,7 +35,9 @@ private:
 	void executeAction(const QString &gameName);
 	void updateActionModeUI(int index);
 
+	void restoreStatusLabel();
 	QTimer *saveDelayTimer = nullptr;
+	QTimer *statusCheckTimer = nullptr;
 
 public:
 	explicit GameDetectorDock(QWidget *parent = nullptr);
@@ -47,6 +53,8 @@ private slots:
 	void onExecuteCommandClicked();
 	void onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString);
 	void onAuthenticationRequired();
+	void onSettingsButtonClicked();
+	void checkWarningsAndStatus();
 };
 
 #endif // GAMEDETECTORDOCK_H

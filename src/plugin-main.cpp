@@ -37,20 +37,20 @@ static GameDetectorDock* get_dock()
 
 bool obs_module_load(void)
 {
-	blog(LOG_INFO, "[GameDetector] Plugin carregado.");
+	blog(LOG_INFO, "[GameDetector] Plugin loaded.");
 
 	// Dock
 	GameDetectorDock *dockWidget = new GameDetectorDock();
 	obs_frontend_add_dock_by_id("game_detector", "Game Detector", dockWidget);
 	g_dock_widget = dockWidget;
-	blog(LOG_INFO, "[GameDetector] Dock registrado.");
+	blog(LOG_INFO, "[GameDetector] Dock registered.");
 
-	obs_frontend_add_tools_menu_item("Configurações do Game Detector", open_settings_dialog, nullptr);
-	blog(LOG_INFO, "[GameDetector] Item de menu de ferramentas adicionado.");
+	obs_frontend_add_tools_menu_item(obs_module_text("Settings.ToolsMenu"), open_settings_dialog, nullptr);
+	blog(LOG_INFO, "[GameDetector] Tools menu item added.");
 
 	ConfigManager::get().load();
 	get_dock()->loadSettingsFromConfig();
-	blog(LOG_INFO, "[GameDetector] Caminho do arquivo de config: %s", obs_module_config_path("config.json"));
+	blog(LOG_INFO, "[GameDetector] Config file path: %s", obs_module_config_path("config.json"));
 
 	// Carrega a lista de jogos do arquivo de config e inicia o monitoramento de processos
 	GameDetector::get().loadGamesFromConfig();
@@ -61,7 +61,7 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
-	blog(LOG_INFO, "[GameDetector] Plugin descarregado.");
+	blog(LOG_INFO, "[GameDetector] Plugin unloaded.");
 
 	// Para o detector de jogos
 	GameDetector::get().stopScanning();

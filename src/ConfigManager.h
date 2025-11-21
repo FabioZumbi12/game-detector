@@ -53,6 +53,9 @@ public:
 	void setRefreshToken(const QString &value);
 	void setUserId(const QString &value);
 	void setTwitchChannelLogin(const QString &value); // NOVO
+
+signals:
+	void settingsSaved();
 };
 
 #endif // CONFIGMANAGER_H
