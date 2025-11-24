@@ -31,6 +31,7 @@ void ConfigManager::load()
 		obs_data_set_bool(settings, SCAN_STEAM_KEY, true); // Padrão
 		obs_data_set_bool(settings, SCAN_EPIC_KEY, true);  // Padrão
 		obs_data_set_bool(settings, SCAN_GOG_KEY, true);   // Padrão
+		obs_data_set_bool(settings, SCAN_UBISOFT_KEY, true); // Padrão
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
 
 		obs_data_array_t *empty_array = obs_data_array_create();
@@ -70,10 +71,13 @@ void ConfigManager::load()
 		obs_data_set_bool(settings, SCAN_STEAM_KEY, true);
 
 	if (!obs_data_has_user_value(settings, SCAN_EPIC_KEY))
-		obs_data_set_bool(settings, SCAN_EPIC_KEY, false);
+		obs_data_set_bool(settings, SCAN_EPIC_KEY, true);
 
 	if (!obs_data_has_user_value(settings, SCAN_GOG_KEY))
-		obs_data_set_bool(settings, SCAN_GOG_KEY, false);
+		obs_data_set_bool(settings, SCAN_GOG_KEY, true);
+
+	if (!obs_data_has_user_value(settings, SCAN_UBISOFT_KEY))
+		obs_data_set_bool(settings, SCAN_UBISOFT_KEY, true);
 
 	if (!obs_data_has_user_value(settings, TWITCH_CHANNEL_LOGIN_KEY))
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
@@ -222,15 +226,22 @@ bool ConfigManager::getScanSteam() const
 bool ConfigManager::getScanEpic() const
 {
 	if (!settings)
-		return false;
+		return true;
 	return obs_data_get_bool(settings, SCAN_EPIC_KEY);
 }
 
 bool ConfigManager::getScanGog() const
 {
 	if (!settings)
-		return false;
+		return true;
 	return obs_data_get_bool(settings, SCAN_GOG_KEY);
+}
+
+bool ConfigManager::getScanUbisoft() const
+{
+	if (!settings)
+		return true;
+	return obs_data_get_bool(settings, SCAN_UBISOFT_KEY);
 }
 
 // -------------------------------------------------------------------

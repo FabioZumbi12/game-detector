@@ -67,9 +67,11 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	scanSteamCheckbox = new QCheckBox("Steam");
 	scanEpicCheckbox = new QCheckBox("Epic Games");
 	scanGogCheckbox = new QCheckBox("GOG Galaxy");
+	scanUbiCheckbox = new QCheckBox("Ubisoft Connect");
 	scanOptionsLayout->addWidget(scanSteamCheckbox);
 	scanOptionsLayout->addWidget(scanEpicCheckbox);
 	scanOptionsLayout->addWidget(scanGogCheckbox);
+	scanOptionsLayout->addWidget(scanUbiCheckbox);
 	scanOptionsLayout->addStretch(1);
 	gamesLayout->addLayout(scanOptionsLayout);
 
@@ -126,9 +128,10 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 		bool scanSteam = scanSteamCheckbox->isChecked();
 		bool scanEpic = scanEpicCheckbox->isChecked();
 		bool scanGog = scanGogCheckbox->isChecked();
+		bool scanUbi = scanUbiCheckbox->isChecked();
 		rescanButton->setEnabled(false);
 		rescanButton->setText(obs_module_text("Settings.Scanning"));
-		GameDetector::get().rescanForGames(scanSteam, scanEpic, scanGog);
+		GameDetector::get().rescanForGames(scanSteam, scanEpic, scanGog, scanUbi);
 	});
 	connect(authButton, &QPushButton::clicked, &TwitchAuthManager::get(), &TwitchAuthManager::startAuthentication);
 
@@ -224,6 +227,7 @@ void GameDetectorSettingsDialog::loadSettings()
 	scanSteamCheckbox->setChecked(ConfigManager::get().getScanSteam());
 	scanEpicCheckbox->setChecked(ConfigManager::get().getScanEpic());
 	scanGogCheckbox->setChecked(ConfigManager::get().getScanGog());
+	scanUbiCheckbox->setChecked(ConfigManager::get().getScanUbisoft());
 }
 
 void GameDetectorSettingsDialog::saveSettings()
@@ -243,6 +247,7 @@ void GameDetectorSettingsDialog::saveSettings()
 	obs_data_set_bool(settings, "scan_steam", scanSteamCheckbox->isChecked());
 	obs_data_set_bool(settings, "scan_epic", scanEpicCheckbox->isChecked());
 	obs_data_set_bool(settings, "scan_gog", scanGogCheckbox->isChecked());
+	obs_data_set_bool(settings, "scan_ubisoft", scanUbiCheckbox->isChecked());
 
 	obs_data_array_release(gamesArray);
 

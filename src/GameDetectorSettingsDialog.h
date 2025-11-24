@@ -32,6 +32,7 @@ private:
 	QCheckBox *scanSteamCheckbox = nullptr;
 	QCheckBox *scanEpicCheckbox = nullptr;
 	QCheckBox *scanGogCheckbox = nullptr;
+	QCheckBox *scanUbiCheckbox = nullptr;
 	QPushButton *rescanButton = nullptr;
 	QLabel      *authStatusLabel = nullptr;
 	QPushButton *authButton      = nullptr;

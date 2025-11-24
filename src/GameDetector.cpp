@@ -54,16 +54,17 @@ void GameDetector::startProcessMonitoring()
 	}
 }
 
-void GameDetector::rescanForGames(bool scanSteam, bool scanEpic, bool scanGog)
+void GameDetector::rescanForGames(bool scanSteam, bool scanEpic, bool scanGog, bool scanUbisoft)
 {
 	if (gameDbWatcher->isRunning()) {
 		blog(LOG_INFO, "[GameDetector] Game scan is already in progress.");
 		return;
 	}
 
-	this->tempScanSteam = scanSteam;
-	this->tempScanEpic = scanEpic;
+	this->tempScanSteam = scanSteam; // Assumindo que estas variáveis de membro existem
+	this->tempScanEpic = scanEpic;   // ou serão adicionadas no header.
 	this->tempScanGog = scanGog;
+	this->tempScanUbisoft = scanUbisoft;
 
 	// Executes game search in a separate thread to avoid blocking the OBS UI
 	blog(LOG_INFO, "[GameDetector] Starting background game scan...");
@@ -383,6 +384,58 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 				knownGameExes.insert(exeName);
 				gameNameMap.insert(exeName, friendlyName);
 
+				emit gameFoundDuringScan(foundGames.size());
+			}
+		}
+	}
+
+	if (this->tempScanUbisoft) {
+		// ==== Ubisoft Connect ====
+		QSettings ubiSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs", QSettings::NativeFormat);
+		QStringList gameIds = ubiSettings.childGroups();
+
+		for (const QString &gameId : gameIds) {
+			ubiSettings.beginGroup(gameId);
+
+			QString installPath = ubiSettings.value("InstallDir").toString();
+			QString friendlyName = ubiSettings.value("DisplayName").toString();
+
+			ubiSettings.endGroup();
+
+			if (friendlyName.isEmpty()) {
+				friendlyName = QDir(installPath).dirName();
+			}
+
+			if (installPath.isEmpty() || !QDir(installPath).exists()) {
+				continue;
+			}
+
+			QString exePath;
+			QString exeName;
+
+			// Lógica de busca de executável
+			const QStringList commonBinarySubfolders = {"", "bin", "bin_plus", "bin_x64"};
+			for (const QString &subfolder : commonBinarySubfolders) {
+				QDir subDir(installPath + (subfolder.isEmpty() ? "" : "/" + subfolder));
+				if (!subDir.exists()) continue;
+
+				QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+				while (subIt.hasNext()) {
+					QString candidate = subIt.next();
+					QString candidateName = QFileInfo(candidate).fileName();
+					if (!isExeIgnored(candidateName)) {
+						exePath = candidate;
+						exeName = candidateName;
+						break;
+					}
+				}
+				if (!exePath.isEmpty()) break;
+			}
+
+			if (!exeName.isEmpty() && !knownGameExes.contains(exeName)) {
+				foundGames.append({friendlyName, exeName, exePath});
+				knownGameExes.insert(exeName);
+				gameNameMap.insert(exeName, friendlyName);
 				emit gameFoundDuringScan(foundGames.size());
 			}
 		}

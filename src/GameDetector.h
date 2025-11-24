@@ -23,6 +23,7 @@ private:
 	bool tempScanSteam = true;
 	bool tempScanEpic = true;
 	bool tempScanGog = true;
+	bool tempScanUbisoft = true;
 
 	explicit GameDetector(QObject *parent = nullptr);
 
@@ -41,7 +42,7 @@ public:
 	// Inicia e para o escaneamento de processos
 	void startScanning();
 	void startProcessMonitoring();
-	void rescanForGames(bool scanSteam, bool scanEpic, bool scanGog);
+	void rescanForGames(bool scanSteam, bool scanEpic, bool scanGog, bool scanUbisoft);
 	void stopScanning();
 	void loadGamesFromConfig();
 	void onSettingsChanged();
