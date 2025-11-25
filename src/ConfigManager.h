@@ -14,16 +14,9 @@ private:
 	static constexpr const char *REFRESH_TOKEN_KEY = "twitch_refresh_token";
 	static constexpr const char *USER_ID_KEY = "twitch_user_id";
 	static constexpr const char *COMMAND_KEY = "twitch_command_message";
-	static constexpr const char *MANUAL_GAMES_KEY = "manual_games_list";
 	static constexpr const char *COMMAND_NO_GAME_KEY = "twitch_command_no_game";
 	static constexpr const char *EXECUTE_AUTOMATICALLY_KEY = "execute_automatically";
 	static constexpr const char *TWITCH_ACTION_MODE_KEY = "twitch_action_mode";
-
-	// ---- CHAVES DE ESCANEAMENTO ----
-	static constexpr const char *SCAN_STEAM_KEY = "scan_steam";
-	static constexpr const char *SCAN_EPIC_KEY = "scan_epic";
-	static constexpr const char *SCAN_GOG_KEY = "scan_gog";
-	static constexpr const char *SCAN_UBISOFT_KEY = "scan_ubisoft";
 
 	// ---- NOVA CHAVE ----
 	static constexpr const char *TWITCH_CHANNEL_LOGIN_KEY = "twitch_channel_login";
@@ -57,12 +50,27 @@ public:
 	bool getScanEpic() const;
 	bool getScanGog() const;
 	bool getScanUbisoft() const;
+	bool getScanOnStartup() const;
+	bool getScanPeriodically() const;
+	int getScanPeriodicallyInterval() const;
 
 	// ---- SETTERS ----
 	void setToken(const QString &value);
 	void setRefreshToken(const QString &value);
 	void setUserId(const QString &value);
 	void setTwitchChannelLogin(const QString &value); // NOVO
+
+	// ---- CHAVES DE ESCANEAMENTO ----
+	static constexpr const char *SCAN_STEAM_KEY = "scan_steam";
+	static constexpr const char *SCAN_EPIC_KEY = "scan_epic";
+	static constexpr const char *SCAN_GOG_KEY = "scan_gog";
+	static constexpr const char *SCAN_UBISOFT_KEY = "scan_ubisoft";
+	static constexpr const char *MANUAL_GAMES_KEY = "manual_games_list";
+	
+	// ---- CHAVES DE ESCANEAMENTO AUTOMÁTICO ----
+	static constexpr const char *SCAN_ON_STARTUP_KEY = "scan_on_startup";
+	static constexpr const char *SCAN_PERIODICALLY_KEY = "scan_periodically";
+	static constexpr const char *SCAN_PERIODICALLY_INTERVAL_KEY = "scan_periodically_interval";
 
 signals:
 	void settingsSaved();

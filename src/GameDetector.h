@@ -14,10 +14,12 @@ class GameDetector : public QObject {
 
 private:
 	QTimer *scanTimer;
+	QTimer *periodicScanTimer;
 	QFutureWatcher<QList<std::tuple<QString, QString, QString>>> *gameDbWatcher;
 	QString currentGameProcess;
 	QHash<QString, QString> gameNameMap; // exe -> friendly name
 	QSet<QString> knownGameExes;
+	QSet<QString> ignoreSubstringsSet;
 	bool isUsingSourceDetection;
 
 	bool tempScanSteam = true;
@@ -34,9 +36,8 @@ private:
 	QString getFileDescription(const QString &filePath);
 
 	// Função auxiliar para verificar se um executável está na lista de ignorados
-	friend bool isExeIgnored(const QString &exeName);
-
-public:
+	bool isExeIgnored(const QString &exeName);
+public: // NOLINT(readability-redundant-access-specifiers)
 	static GameDetector &get();
 
 	// Inicia e para o escaneamento de processos
@@ -46,7 +47,9 @@ public:
 	void stopScanning();
 	void loadGamesFromConfig();
 	void onSettingsChanged();
-
+	void setupPeriodicScan();
+	bool isGameListEmpty() const;
+	void mergeAndSaveGames(const QList<std::tuple<QString, QString, QString>> &foundGames);
 
 signals:
 	// Sinal emitido quando um novo jogo é detectado
@@ -63,6 +66,7 @@ private slots:
 	void scanProcesses();
 	// Slot chamado quando a varredura assíncrona de jogos termina
 	void onGameScanFinished();
+	void onPeriodicScanTriggered();
 };
 
 #endif // GAMEDETECTOR_H

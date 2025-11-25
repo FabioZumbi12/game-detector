@@ -2,8 +2,11 @@
 #define TWITCHCHATBOT_H
 
 #pragma once
-#include <QFutureWatcher>
 #include <QObject>
+#include <QFutureWatcher>
+
+template <typename T>
+class QFutureWatcher;
 
 class TwitchChatBot : public QObject {
 	Q_OBJECT
@@ -23,12 +26,18 @@ private:
 	~TwitchChatBot();
 
 	QString lastSetCategoryName;
-	QFutureWatcher<QString> *categoryUpdateWatcher;
+	QFutureWatcher<QString> *gameIdWatcher;
 	QFutureWatcher<bool> *chatMessageWatcher;
+	QFutureWatcher<void *> *categoryUpdateWatcher; // Usaremos void* para o resultado do update
 
 signals:
 	void categoryUpdateFinished(bool success, const QString &gameName, const QString &errorString = QString());
 	void authenticationRequired();
+
+private slots:
+	void onGameIdReceived();
+	void onCategoryUpdateCompleted();
+	void onChatMessageSent();
 };
 
 #endif // TWITCHCHATBOT_H

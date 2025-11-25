@@ -32,6 +32,9 @@ void ConfigManager::load()
 		obs_data_set_bool(settings, SCAN_EPIC_KEY, true);  // Padrão
 		obs_data_set_bool(settings, SCAN_GOG_KEY, true);   // Padrão
 		obs_data_set_bool(settings, SCAN_UBISOFT_KEY, true); // Padrão
+		obs_data_set_bool(settings, SCAN_ON_STARTUP_KEY, true); // Padrão
+		obs_data_set_bool(settings, SCAN_PERIODICALLY_KEY, false); // Padrão
+		obs_data_set_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY, 60); // Padrão
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
 
 		obs_data_array_t *empty_array = obs_data_array_create();
@@ -65,7 +68,7 @@ void ConfigManager::load()
 		obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);
 
 	if (!obs_data_has_user_value(settings, TWITCH_ACTION_MODE_KEY))
-		obs_data_set_int(settings, TWITCH_ACTION_MODE_KEY, 0);
+		obs_data_set_int(settings, TWITCH_ACTION_MODE_KEY, 1);
 
 	if (!obs_data_has_user_value(settings, SCAN_STEAM_KEY))
 		obs_data_set_bool(settings, SCAN_STEAM_KEY, true);
@@ -78,6 +81,15 @@ void ConfigManager::load()
 
 	if (!obs_data_has_user_value(settings, SCAN_UBISOFT_KEY))
 		obs_data_set_bool(settings, SCAN_UBISOFT_KEY, true);
+
+	if (!obs_data_has_user_value(settings, SCAN_ON_STARTUP_KEY))
+		obs_data_set_bool(settings, SCAN_ON_STARTUP_KEY, true);
+
+	if (!obs_data_has_user_value(settings, SCAN_PERIODICALLY_KEY))
+		obs_data_set_bool(settings, SCAN_PERIODICALLY_KEY, false);
+
+	if (!obs_data_has_user_value(settings, SCAN_PERIODICALLY_INTERVAL_KEY))
+		obs_data_set_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY, 60);
 
 	if (!obs_data_has_user_value(settings, TWITCH_CHANNEL_LOGIN_KEY))
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
@@ -242,6 +254,27 @@ bool ConfigManager::getScanUbisoft() const
 	if (!settings)
 		return true;
 	return obs_data_get_bool(settings, SCAN_UBISOFT_KEY);
+}
+
+bool ConfigManager::getScanOnStartup() const
+{
+	if (!settings)
+		return true;
+	return obs_data_get_bool(settings, SCAN_ON_STARTUP_KEY);
+}
+
+bool ConfigManager::getScanPeriodically() const
+{
+	if (!settings)
+		return false;
+	return obs_data_get_bool(settings, SCAN_PERIODICALLY_KEY);
+}
+
+int ConfigManager::getScanPeriodicallyInterval() const
+{
+	if (!settings)
+		return 60;
+	return (int)obs_data_get_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY);
 }
 
 // -------------------------------------------------------------------

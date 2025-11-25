@@ -18,13 +18,8 @@ class GameDetectorDock : public QWidget {
 
 private:
 	QLabel *statusLabel = nullptr;
-	QLabel *twitchActionLabel = nullptr;
-	QComboBox *twitchActionComboBox = nullptr;
-	QLabel *commandLabel = nullptr;
-	QLineEdit *commandInput = nullptr;
-	QLabel *noGameCommandLabel = nullptr;
-	QLineEdit *noGameCommandInput = nullptr;
 	QPushButton *executeCommandButton = nullptr;
+	QPushButton *setJustChattingButton = nullptr;
 	QCheckBox *autoExecuteCheckbox = nullptr;
 	QPushButton *settingsButton = nullptr;
 	GameDetectorSettingsDialog *settingsDialog = nullptr;
@@ -33,7 +28,6 @@ private:
 	QString detectedGameName;
 
 	void executeAction(const QString &gameName);
-	void updateActionModeUI(int index);
 
 	void restoreStatusLabel();
 	QTimer *saveDelayTimer = nullptr;
@@ -44,6 +38,7 @@ public:
 	~GameDetectorDock();
 
 	void loadSettingsFromConfig();
+	void onSetJustChattingClicked();
 
 private slots:
 	void onSettingsChanged();

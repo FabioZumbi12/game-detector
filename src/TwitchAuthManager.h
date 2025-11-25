@@ -4,16 +4,22 @@
 #pragma once
 
 #include <QObject>
-#include <QTcpServer>
-#include <QTcpSocket>
 #include <QString>
-#include <QJsonDocument>
 #include <QFuture>
 #include <QJsonObject>
-#include <QJsonArray>
+
+class QTcpServer;
+class QTcpSocket;
 
 class TwitchAuthManager : public QObject {
 	Q_OBJECT
+
+public:
+	enum UpdateResult {
+		Success,
+		AuthError,
+		Failed
+	};
 
 public:
 	static TwitchAuthManager &get()
@@ -21,10 +27,6 @@ public:
 		static TwitchAuthManager instance;
 		return instance;
 	}
-
-	// === AUTENTICAÇÃO === //
-	void startAuthentication();
-	void clearAuthentication();
 
 	// Tokens
 	QString getAccessToken();
@@ -34,16 +36,21 @@ public:
 
 	// === HELIX (Async) === //
 	QFuture<QString> getGameId(const QString &gameName);
-	QFuture<bool> updateChannelCategory(const QString &gameId);
+	QFuture<UpdateResult> updateChannelCategory(const QString &gameId);
 	QFuture<bool> sendChatMessage(const QString &broadcasterId, const QString &senderId, const QString &message);
 
 signals:
 	void authenticationFinished(bool success, const QString &info); // Sinal emitido quando o fluxo de autenticação via navegador termina
 	void reauthenticationNeeded();                               // Sinal emitido quando um token inválido é detectado em uma chamada de API
+	void authenticationDataNeedsClearing();                      // Sinal para limpar os dados de autenticação de forma segura entre threads
 
 private slots:
 	void onNewConnection();
-	void handleReauthenticationRequest(); // Slot para lidar com a necessidade de reautenticação
+
+public slots:
+	void startAuthentication();
+	void clearAuthentication();
+	void handleReauthenticationRequest();
 
 private:
 	TwitchAuthManager(QObject *parent = nullptr);
@@ -54,7 +61,6 @@ private:
 	QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body, const QString &token);
 
 	// Estrutura OAuth interna
-	QString clientId;
 	QString accessToken;
 	QString userId;
 	bool isAuthenticating = false; // Flag para evitar múltiplas tentativas de autenticação
@@ -62,7 +68,7 @@ private:
 	// Local HTTP Server
 	QTcpServer *server = nullptr;
 
-	static constexpr const char *CLIENT_ID = "au09dsnlplmvtlvwgenvvdup5cf458"; // Para fluxo implícito
+	static constexpr const char *CLIENT_ID = "wl4mx2l4sgmdvpwoek6pjronpor9en"; // Para fluxo implícito
 	static constexpr const char *REDIRECT_URI = "http://localhost:30000/";
 };
 

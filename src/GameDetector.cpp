@@ -20,9 +20,6 @@
 #pragma comment(lib, "version.lib")
 #endif
 
-// Declaração antecipada para a função auxiliar
-bool isExeIgnored(const QString &exeName);
-
 GameDetector &GameDetector::get()
 {
 	static GameDetector instance;
@@ -32,12 +29,26 @@ GameDetector &GameDetector::get()
 GameDetector::GameDetector(QObject *parent) : QObject(parent)
 {
 	scanTimer = new QTimer(this);
+	periodicScanTimer = new QTimer(this);
 	gameDbWatcher = new QFutureWatcher<QList<std::tuple<QString, QString, QString>>>(this);
 
 	// Conecta o sinal de timeout do timer ao nosso slot de escaneamento
 	connect(gameDbWatcher, &QFutureWatcher<QList<std::tuple<QString, QString, QString>>>::finished, this,
 		&GameDetector::onGameScanFinished);
 	connect(scanTimer, &QTimer::timeout, this, &GameDetector::scanProcesses);
+	connect(periodicScanTimer, &QTimer::timeout, this, &GameDetector::onPeriodicScanTriggered);
+
+	// Converte a lista de substrings para um QSet para buscas mais rápidas.
+	// Isso é feito uma vez no construtor para otimizar a função isExeIgnored.
+	const QStringList ignoreSubstrings = {
+		"7z", "presentmon", "dxsetup", "errorreporter", "crashpad", "buildpatchtool", "redmod", "dotnet", "bepinex",
+		"vcredist", "vc_redist", "redist", "prereq", "crashreport", "swarm", "unrealpak", "bink2", "bootstrap",
+		"shadercompile", "epicwebhelper", "svn", "python", "dumpmini", "datacollector", "testhost", "unrealgame",
+		"shipping"
+	};
+	for (const QString& str : ignoreSubstrings) {
+		ignoreSubstringsSet.insert(str);
+	}
 }
 
 void GameDetector::startScanning()
@@ -80,8 +91,6 @@ void GameDetector::onGameScanFinished()
 	// Emite o sinal com os jogos encontrados para a UI
 	emit automaticScanFinished(gameDbWatcher->result());
 
-	// Recarrega a lista de jogos (que pode ter sido atualizada pela UI) para o monitoramento
-	loadGamesFromConfig();
 }
 
 void GameDetector::onSettingsChanged()
@@ -97,6 +106,46 @@ void GameDetector::onSettingsChanged()
 	loadGamesFromConfig();
 }
 
+void GameDetector::setupPeriodicScan()
+{
+	if (periodicScanTimer->isActive()) {
+		periodicScanTimer->stop();
+	}
+
+	bool enabled = ConfigManager::get().getScanPeriodically();
+	if (enabled) {
+		int minutes = ConfigManager::get().getScanPeriodicallyInterval();
+		if (minutes > 0) {
+			long long intervalMs = (long long)minutes * 60 * 1000;
+			periodicScanTimer->start(intervalMs);
+			blog(LOG_INFO, "[GameDetector] Periodic scan enabled. Interval: %d minutes.", minutes);
+		}
+	} else {
+		blog(LOG_INFO, "[GameDetector] Periodic scan disabled.");
+	}
+}
+
+void GameDetector::onPeriodicScanTriggered()
+{
+	blog(LOG_INFO, "[GameDetector] Periodic scan triggered.");
+	// Inicia a varredura usando as configurações salvas
+	bool scanSteam = ConfigManager::get().getScanSteam();
+	bool scanEpic = ConfigManager::get().getScanEpic();
+	bool scanGog = ConfigManager::get().getScanGog();
+	bool scanUbisoft = ConfigManager::get().getScanUbisoft();
+
+	rescanForGames(scanSteam, scanEpic, scanGog, scanUbisoft);
+
+	// Conecta para salvar os jogos encontrados neste scan periódico e depois se desconecta.
+	auto conn = std::make_shared<QMetaObject::Connection>();
+	*conn = connect(this, &GameDetector::automaticScanFinished,
+			[this, conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
+				this->mergeAndSaveGames(foundGames);
+				this->loadGamesFromConfig(); // Recarrega a lista para o monitoramento
+				QObject::disconnect(*conn);  // Auto-desconexão
+			});
+}
+
 void GameDetector::stopScanning()
 {
 	if (scanTimer->isActive()) {
@@ -104,15 +153,6 @@ void GameDetector::stopScanning()
 		scanTimer->stop();
 	}
 }
-
-// Lista de substrings para ignorar. Se qualquer parte do nome do executável
-// corresponder a uma dessas strings, ele será ignorado.
-const QStringList ignoreSubstrings = {
-	"7z", "presentmon", "dxsetup", "errorreporter", "crashpad", "buildpatchtool", "redmod", "dotnet", "bepinex",
-	"vcredist", "vc_redist", "redist", "prereq", "crashreport", "swarm", "unrealpak", "bink2", "bootstrap",
-	"shadercompile", "epicwebhelper", "svn", "python", "dumpmini", "datacollector", "testhost", "unrealgame",
-	"shipping" // "Shipping.exe" é muito comum em jogos Unreal, mas o nome do jogo vem antes.
-};
 
 // Lista de nomes de executáveis completos para ignorar.
 // A correspondência deve ser exata (ignorando maiúsculas/minúsculas).
@@ -198,7 +238,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 					while (rootIt.hasNext()) {
 						QString candidate = rootIt.next();
 						QString candidateName = QFileInfo(candidate).fileName();
-						if (!isExeIgnored(candidateName)) {
+						if (!this->isExeIgnored(candidateName)) {
 							exePath = candidate;
 							exeName = candidateName;
 							break;
@@ -216,7 +256,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 							while (subIt.hasNext()) {
 								QString candidate = subIt.next();
 								QString candidateName = QFileInfo(candidate).fileName();
-								if (!isExeIgnored(candidateName)) {
+								if (!this->isExeIgnored(candidateName)) {
 									exePath = candidate;
 									exeName = candidateName;
 									break;
@@ -234,7 +274,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 						while (recursiveIt.hasNext()) {
 							QString candidate = recursiveIt.next();
 							QString candidateName = QFileInfo(candidate).fileName();
-							if (!isExeIgnored(candidateName)) {
+							if (!this->isExeIgnored(candidateName)) {
 								exePath = candidate;
 								exeName = candidateName;
 								break;
@@ -291,7 +331,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 						QString installPath = obj["InstallLocation"].toString();
 						QString exePath = QDir::toNativeSeparators(installPath + "/" + exeName);
 
-						if (friendlyName.isEmpty() || exeName.isEmpty() || !QFileInfo::exists(exePath) || isExeIgnored(exeName)) {
+						if (friendlyName.isEmpty() || exeName.isEmpty() || !QFileInfo::exists(exePath) || this->isExeIgnored(exeName)) {
 							continue;
 						}
 						if (!knownGameExes.contains(QFileInfo(exePath).fileName())) {
@@ -335,7 +375,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 							while (subIt.hasNext()) {
 								QString candidate = subIt.next();
 								QString candidateName = QFileInfo(candidate).fileName();
-								if (!isExeIgnored(candidateName)) {
+								if (!this->isExeIgnored(candidateName)) {
 									exePath = candidate;
 									exeName = candidateName;
 									break;
@@ -373,7 +413,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 			gogSettings.endGroup();
 
 			// Validação
-			if (exePath.isEmpty() || !QFileInfo::exists(exePath) || isExeIgnored(exeName)) {
+			if (exePath.isEmpty() || !QFileInfo::exists(exePath) || this->isExeIgnored(exeName)) {
 				continue;
 			}
 
@@ -423,7 +463,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 				while (subIt.hasNext()) {
 					QString candidate = subIt.next();
 					QString candidateName = QFileInfo(candidate).fileName();
-					if (!isExeIgnored(candidateName)) {
+					if (!this->isExeIgnored(candidateName)) {
 						exePath = candidate;
 						exeName = candidateName;
 						break;
@@ -447,16 +487,51 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 	return foundGames;
 }
 
-/**
- * @brief Verifica se um nome de executável deve ser ignorado.
- *
- * Esta função auxiliar centraliza a lógica de verificação contra a `ignoreList`,
- * checando tanto por nomes completos quanto por correspondências parciais.
- *
- * @param exeName O nome do arquivo executável a ser verificado.
- * @return true se o executável deve ser ignorado, false caso contrário.
- */
-bool isExeIgnored(const QString &exeName) {
+void GameDetector::mergeAndSaveGames(const QList<std::tuple<QString, QString, QString>> &foundGames)
+{
+	if (foundGames.isEmpty()) {
+		return;
+	}
+
+	blog(LOG_INFO, "[GameDetector] Merging and saving games from startup/periodic scan.");
+
+	obs_data_t *settings = ConfigManager::get().getSettings();
+	obs_data_array_t *gamesArray = ConfigManager::get().getManualGames();
+	if (!gamesArray) {
+		gamesArray = obs_data_array_create();
+	}
+
+	QSet<QString> existingPaths;
+	size_t count = obs_data_array_count(gamesArray);
+	for (size_t i = 0; i < count; ++i) {
+		obs_data_t *item = obs_data_array_item(gamesArray, i);
+		existingPaths.insert(obs_data_get_string(item, "path"));
+		obs_data_release(item);
+	}
+
+	int addedCount = 0;
+	for (const auto &gameTuple : foundGames) {
+		QString exePath = std::get<2>(gameTuple);
+		if (!existingPaths.contains(exePath)) {
+			obs_data_t *item = obs_data_create();
+			obs_data_set_string(item, "name", std::get<0>(gameTuple).toStdString().c_str());
+			obs_data_set_string(item, "exe", std::get<1>(gameTuple).toStdString().c_str());
+			obs_data_set_string(item, "path", exePath.toStdString().c_str());
+			obs_data_array_push_back(gamesArray, item);
+			obs_data_release(item);
+			addedCount++;
+		}
+	}
+
+	if (addedCount > 0) {
+		obs_data_set_array(settings, ConfigManager::MANUAL_GAMES_KEY, gamesArray);
+		ConfigManager::get().save(settings);
+		blog(LOG_INFO, "[GameDetector] Added %d new games to the configuration.", addedCount);
+	}
+
+}
+
+bool GameDetector::isExeIgnored(const QString &exeName) {
 	const QString lowerExeName = exeName.toLower();
 
 	// 1. Verifica se o nome completo está na lista de ignorados (verificação rápida)
@@ -465,12 +540,12 @@ bool isExeIgnored(const QString &exeName) {
 	}
 
 	// 2. Verifica se o nome contém alguma das substrings a serem ignoradas
-	for (const QString &substring : ignoreSubstrings) {
+	for (const QString &substring : ignoreSubstringsSet) {
 		if (lowerExeName.contains(substring)) {
 			return true;
 		}
 	}
-	return false;
+	return false; // Otimizado usando QSet no construtor
 }
 
 void GameDetector::loadGamesFromConfig()
@@ -514,19 +589,19 @@ void GameDetector::scanProcesses()
 				DWORD cbNeeded;
 				if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeeded)) {
 					wchar_t processPath[MAX_PATH];
-					if (GetModuleFileNameEx(hProcess, hMod, processPath, sizeof(processPath) / sizeof(wchar_t))) {
-						QString qProcessPath = QString::fromWCharArray(processPath);
-						QString processName = QFileInfo(qProcessPath).fileName();
+					if (GetModuleFileNameExW(hProcess, hMod, processPath, sizeof(processPath) / sizeof(wchar_t))) {
+						QString processName = QFileInfo(QString::fromWCharArray(processPath)).fileName();
 
 						// Nova lógica de detecção: verifica se o nome do processo está na nossa lista de jogos conhecidos
+						// Esta verificação é rápida (usando QSet) e evita a criação de QFileInfo para cada processo.
 						if (knownGameExes.contains(processName)) {
 
+							QString qProcessPath = QString::fromWCharArray(processPath);
 							// Usa o nome manual se existir, senão pega a descrição do arquivo
 							QString friendlyName = gameNameMap.value(processName);
 							if (friendlyName.isEmpty()) {
 								friendlyName = getFileDescription(qProcessPath);
 							}
-
 							// Se é um jogo diferente do que já estava rodando, emite o sinal
 							if (processName != currentGameProcess) {
 								currentGameProcess = processName;
@@ -593,4 +668,9 @@ QString GameDetector::getFileDescription(const QString &filePath)
 	}
 #endif
 	return "";
+}
+
+bool GameDetector::isGameListEmpty() const
+{
+	return knownGameExes.isEmpty();
 }

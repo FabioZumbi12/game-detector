@@ -1,18 +1,16 @@
 ﻿#include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <QMainWindow>
-#include <QDockWidget>
+#include <QObject>
 #include <obs-module.h>
 
 #include "ConfigManager.h"
 #include "GameDetector.h"
-#include "TwitchChatBot.h"
 
 #include "GameDetectorSettingsDialog.h"
 #include "GameDetectorDock.h"
 
-static GameDetectorDock *g_dock_widget = nullptr;
-static GameDetectorSettingsDialog *g_settings_dialog = nullptr;
+static GameDetectorDock *g_dock_widget = nullptr; // g_settings_dialog não é mais necessário
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("GameDetector", "en-US")
@@ -20,14 +18,8 @@ OBS_MODULE_USE_DEFAULT_LOCALE("GameDetector", "en-US")
 static void open_settings_dialog(void *private_data)
 {
 	Q_UNUSED(private_data);
-
-	if (!g_settings_dialog) {
-		g_settings_dialog =
-			new GameDetectorSettingsDialog(static_cast<QWidget *>(obs_frontend_get_main_window()));
-	}
-
-	g_settings_dialog->show();
-	g_settings_dialog->raise();
+	GameDetectorSettingsDialog dialog(static_cast<QWidget *>(obs_frontend_get_main_window()));
+	dialog.exec();
 }
 
 static GameDetectorDock* get_dock()
@@ -55,6 +47,26 @@ bool obs_module_load(void)
 	// Carrega a lista de jogos do arquivo de config e inicia o monitoramento de processos
 	GameDetector::get().loadGamesFromConfig();
 	GameDetector::get().startScanning();
+	GameDetector::get().setupPeriodicScan(); // Configura o timer periódico
+
+	// Verifica se deve escanear ao iniciar
+	if (ConfigManager::get().getScanOnStartup()) {
+		blog(LOG_INFO, "[GameDetector] Performing scan on startup.");
+		bool scanSteam = ConfigManager::get().getScanSteam();
+		bool scanEpic = ConfigManager::get().getScanEpic();
+		bool scanGog = ConfigManager::get().getScanGog();
+		bool scanUbisoft = ConfigManager::get().getScanUbisoft();
+		GameDetector::get().rescanForGames(scanSteam, scanEpic, scanGog, scanUbisoft);
+
+		// Conecta para salvar os jogos encontrados no scan inicial e depois se desconecta.
+		auto conn = std::make_shared<QMetaObject::Connection>();
+		*conn = QObject::connect(&GameDetector::get(), &GameDetector::automaticScanFinished,
+				[conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
+					GameDetector::get().mergeAndSaveGames(foundGames);
+					GameDetector::get().loadGamesFromConfig(); // Recarrega a lista para o monitoramento
+					QObject::disconnect(*conn); // Auto-desconexão
+				});
+	}
 
 	return true;
 }

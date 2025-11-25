@@ -2,16 +2,13 @@
 #define GAMEDETECTORSETTINGSDIALOG_H
 
 #include <QDialog>
-#include <tuple>
-#include <QPair>
-#include <obs-module.h>
 
 // Forward declarations
-class QVBoxLayout;
 class QLabel;
 class QLineEdit;
 class QPushButton;
-class QTableWidget;
+class QComboBox;
+class QSpinBox;
 class QCheckBox;
 
 class GameDetectorSettingsDialog : public QDialog {
@@ -19,33 +16,38 @@ class GameDetectorSettingsDialog : public QDialog {
 
 public:
 	explicit GameDetectorSettingsDialog(QWidget *parent = nullptr);
-	~GameDetectorSettingsDialog();
+	void rescanGames();
 
-private:
 	void loadSettings();
 	void saveSettings();
+	void updateActionModeUI(int index);
+
+private:
 
 	// UI Elements
-	QTableWidget *manualGamesTable = nullptr;
-	QPushButton *addGameButton = nullptr;
-	QPushButton *clearTableButton = nullptr;
-	QCheckBox *scanSteamCheckbox = nullptr;
-	QCheckBox *scanEpicCheckbox = nullptr;
-	QCheckBox *scanGogCheckbox = nullptr;
-	QCheckBox *scanUbiCheckbox = nullptr;
-	QPushButton *rescanButton = nullptr;
+	QPushButton *manageGamesButton = nullptr;
 	QLabel      *authStatusLabel = nullptr;
 	QPushButton *authButton      = nullptr;
 	QPushButton *disconnectButton = nullptr;
 	QPushButton *okButton = nullptr;
 	QPushButton *cancelButton = nullptr;
+	QLabel      *commandLabel = nullptr;
+	QLineEdit   *commandInput = nullptr;
+	QLabel      *noGameCommandLabel = nullptr;
+	QLineEdit   *noGameCommandInput = nullptr;
+	QComboBox   *twitchActionComboBox = nullptr;
+	QCheckBox   *scanSteamCheckbox = nullptr;
+	QCheckBox   *scanEpicCheckbox = nullptr;
+	QCheckBox   *scanGogCheckbox = nullptr;
+	QCheckBox   *scanUbiCheckbox = nullptr;
+	QCheckBox   *scanOnStartupCheckbox = nullptr;
+	QCheckBox   *scanPeriodicallyCheckbox = nullptr;
+	QSpinBox    *scanIntervalSpinbox = nullptr;
 
 private slots:
-	void onAddGameClicked();
-	void onClearTableClicked();
-	void onAutomaticScanFinished(const QList<std::tuple<QString, QString, QString>> &foundGames);
 	void onAuthenticationFinished(bool success, const QString &username);
 	void onDisconnectClicked();
+	void onManageGamesClicked();
 };
 
 #endif // GAMEDETECTORSETTINGSDIALOG_H
