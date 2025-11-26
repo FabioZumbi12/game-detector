@@ -40,7 +40,7 @@ void TwitchAuthManager::loadToken()
 	userId = obs_data_get_string(settings, "twitch_user_id");
 }
 
-void TwitchAuthManager::startAuthentication()
+void TwitchAuthManager::startAuthentication(int mode)
 {
 	if (isAuthenticating) {
 		blog(LOG_INFO, "[GameDetector/Auth] Authentication already in progress, ignoring new request.");
@@ -61,7 +61,20 @@ void TwitchAuthManager::startAuthentication()
 	query.addQueryItem("client_id", CLIENT_ID);
 	query.addQueryItem("redirect_uri", REDIRECT_URI);
 	query.addQueryItem("response_type", "token");
-	query.addQueryItem("scope", "user:write:chat channel:manage:broadcast");
+
+	bool useUnifiedAuth = ConfigManager::get().getUnifiedAuth();
+	int actionMode = (mode == -1) ? ConfigManager::get().getTwitchActionMode() : mode;
+
+	if (useUnifiedAuth) {
+		blog(LOG_INFO, "[GameDetector/Auth] Starting unified authentication.");
+		query.addQueryItem("scope", "user:write:chat channel:manage:broadcast");
+	} else if (actionMode == 0) { // Modo Comando de Chat
+		blog(LOG_INFO, "[GameDetector/Auth] Starting authentication in mode: Chat Command");
+		query.addQueryItem("scope", "user:write:chat");
+	} else { // Modo API
+		blog(LOG_INFO, "[GameDetector/Auth] Starting authentication in mode: API");
+		query.addQueryItem("scope", "channel:manage:broadcast");
+	}
 
 	authUrl.setQuery(query);
 

@@ -16,6 +16,7 @@ private:
 	static constexpr const char *COMMAND_NO_GAME_KEY = "twitch_command_no_game";
 	static constexpr const char *EXECUTE_AUTOMATICALLY_KEY = "execute_automatically";
 	static constexpr const char *TWITCH_ACTION_MODE_KEY = "twitch_action_mode";
+	static constexpr const char *TWITCH_UNIFIED_AUTH_KEY = "twitch_unified_auth";
 	static constexpr const char *TWITCH_CHANNEL_LOGIN_KEY = "twitch_channel_login";
 
 	obs_data_t *settings = nullptr;
@@ -38,6 +39,7 @@ public:
 	bool getExecuteAutomatically() const;
 	int getTwitchActionMode() const;
 	QString getTwitchChannelLogin() const;
+	bool getUnifiedAuth() const;
 	bool getScanSteam() const;
 	bool getScanEpic() const;
 	bool getScanGog() const;

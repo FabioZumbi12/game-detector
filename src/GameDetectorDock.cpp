@@ -29,6 +29,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	mainLayout->setContentsMargins(5, 5, 5, 5);
 	this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
 
+	detectedGameName = "Just Chatting";
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
 	statusLabel->setWordWrap(true);
 	mainLayout->addWidget(statusLabel); 

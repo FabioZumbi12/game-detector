@@ -27,7 +27,7 @@ private:
 
 	QString configPath;
 	QString detectedGameName;
-	QString desiredCategory;
+	QString desiredCategory = "Just Chatting";
  
 	void restoreStatusLabel();
 	void onCooldownStarted(int seconds);

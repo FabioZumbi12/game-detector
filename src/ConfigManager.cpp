@@ -65,6 +65,9 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, TWITCH_ACTION_MODE_KEY))
 		obs_data_set_int(settings, TWITCH_ACTION_MODE_KEY, 1);
 
+	if (!obs_data_has_user_value(settings, TWITCH_UNIFIED_AUTH_KEY))
+		obs_data_set_bool(settings, TWITCH_UNIFIED_AUTH_KEY, true);
+
 	if (!obs_data_has_user_value(settings, SCAN_STEAM_KEY))
 		obs_data_set_bool(settings, SCAN_STEAM_KEY, true);
 
@@ -202,6 +205,13 @@ QString ConfigManager::getTwitchChannelLogin() const
 	if (!settings)
 		return "";
 	return QString::fromUtf8(obs_data_get_string(settings, TWITCH_CHANNEL_LOGIN_KEY));
+}
+
+bool ConfigManager::getUnifiedAuth() const
+{
+	if (!settings)
+		return true;
+	return obs_data_get_bool(settings, TWITCH_UNIFIED_AUTH_KEY);
 }
 
 bool ConfigManager::getScanSteam() const

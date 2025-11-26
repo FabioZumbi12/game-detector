@@ -74,7 +74,6 @@ bool TwitchChatBot::updateCategory(const QString &gameName)
 	}
 
 	if (getLastSetCategory() == gameName) {
-		blog(LOG_INFO, "[GameDetector] Category '%s' is already set. Skipping update.", gameName.toStdString().c_str());
 		return false;
 	}
 

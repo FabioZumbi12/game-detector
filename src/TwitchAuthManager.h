@@ -46,7 +46,7 @@ private slots:
 	void onNewConnection();
 
 public slots:
-	void startAuthentication();
+	void startAuthentication(int mode = -1);
 	void clearAuthentication();
 	void loadToken();
 

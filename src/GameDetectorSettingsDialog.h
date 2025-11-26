@@ -20,6 +20,7 @@ public:
 	void loadSettings();
 	void saveSettings();
 	void updateActionModeUI(int index);
+	void disconectOnChangeComboBox(int index);
 
 private:
 	QPushButton *manageGamesButton = nullptr;
@@ -35,6 +36,7 @@ private:
 	QLabel 		*delayLabel = nullptr;
 	QSpinBox 	*delaySpinBox = nullptr;
 	QComboBox   *twitchActionComboBox = nullptr;
+	QCheckBox   *unifiedAuthCheckbox = nullptr;
 	QCheckBox   *scanSteamCheckbox = nullptr;
 	QCheckBox   *scanEpicCheckbox = nullptr;
 	QCheckBox   *scanGogCheckbox = nullptr;

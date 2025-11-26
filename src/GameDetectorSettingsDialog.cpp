@@ -88,6 +88,7 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	QLabel *helpLabel = new QLabel(obs_module_text("Auth.HelpText"));
 	helpLabel->setWordWrap(true);
 	authLayout->addWidget(helpLabel);
+	authLayout->addStretch(1);
 
 	authGroup->setLayout(authLayout);
 
@@ -98,6 +99,10 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	twitchActionComboBox->addItem(obs_module_text("Settings.TwitchAction.SendCommand"), 0);
 	twitchActionComboBox->addItem(obs_module_text("Settings.TwitchAction.ChangeCategory"), 1);
 	twitchActionComboBoxLayout->addWidget(twitchActionComboBox);
+	
+	unifiedAuthCheckbox = new QCheckBox(obs_module_text("Settings.TwitchAction.UnifiedAuth"));
+	unifiedAuthCheckbox->setToolTip(obs_module_text("Settings.TwitchAction.UnifiedAuth.Tooltip"));
+	twitchActionComboBoxLayout->addWidget(unifiedAuthCheckbox);
 
 	QFormLayout *twitchActionLayout = new QFormLayout();
 	twitchActionLayout->addRow(twitchActionComboBoxLayout);
@@ -120,7 +125,11 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	twitchActionLayout->addRow(delayLabel, delaySpinBox);
 
 	connect(twitchActionComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
-		updateActionModeUI(index);
+		disconectOnChangeComboBox(index);
+	});
+	connect(unifiedAuthCheckbox, &QCheckBox::checkStateChanged, this, [this](int state) {
+		Q_UNUSED(state);
+		disconectOnChangeComboBox(twitchActionComboBox->currentIndex());
 	});
 
 	twitchActionGroup->setLayout(twitchActionLayout);
@@ -146,7 +155,9 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	mainLayout->addLayout(dialogButtonsLayout);
 
 	connect(manageGamesButton, &QPushButton::clicked, this, &GameDetectorSettingsDialog::onManageGamesClicked);
-	connect(authButton, &QPushButton::clicked, &TwitchAuthManager::get(), &TwitchAuthManager::startAuthentication);
+	connect(authButton, &QPushButton::clicked, this, [this]() {
+		TwitchAuthManager::get().startAuthentication(twitchActionComboBox->currentIndex());
+	});
 	connect(disconnectButton, &QPushButton::clicked, this, &GameDetectorSettingsDialog::onDisconnectClicked);
 	connect(&TwitchAuthManager::get(), &TwitchAuthManager::authenticationFinished, this, &GameDetectorSettingsDialog::onAuthenticationFinished);
 
@@ -175,7 +186,10 @@ void GameDetectorSettingsDialog::loadSettings()
 		onAuthenticationFinished(false, "");
 	}
 
+	twitchActionComboBox->blockSignals(true);
 	twitchActionComboBox->setCurrentIndex(ConfigManager::get().getTwitchActionMode());
+	twitchActionComboBox->blockSignals(false);
+	unifiedAuthCheckbox->setChecked(ConfigManager::get().getUnifiedAuth());
 	commandInput->setText(ConfigManager::get().getCommand());
 	noGameCommandInput->setText(ConfigManager::get().getNoGameCommand());
 	delaySpinBox->setValue(ConfigManager::get().getTwitchActionDelay());
@@ -195,6 +209,7 @@ void GameDetectorSettingsDialog::saveSettings()
 	obs_data_t *settings = ConfigManager::get().getSettings();
 
 	obs_data_set_int(settings, "twitch_action_mode", twitchActionComboBox->currentData().toInt());
+	obs_data_set_bool(settings, "twitch_unified_auth", unifiedAuthCheckbox->isChecked());
 	obs_data_set_string(settings, "twitch_command_message", commandInput->text().toStdString().c_str());
 	obs_data_set_string(settings, "twitch_command_no_game", noGameCommandInput->text().toStdString().c_str());
 	obs_data_set_int(settings, ConfigManager::TWITCH_ACTION_DELAY_KEY, delaySpinBox->value());
@@ -217,6 +232,17 @@ void GameDetectorSettingsDialog::rescanGames()
 {
 	GameDetector::get().rescanForGames(scanSteamCheckbox->isChecked(), scanEpicCheckbox->isChecked(),
 					   scanGogCheckbox->isChecked(), scanUbiCheckbox->isChecked());
+}
+
+void GameDetectorSettingsDialog::disconectOnChangeComboBox(int index)
+{
+	// Se as permissões unificadas estiverem ativas, não precisa desconectar ao mudar o modo.
+	if (unifiedAuthCheckbox->isChecked()) {
+		updateActionModeUI(index);
+		return;
+	}
+	onDisconnectClicked();
+	updateActionModeUI(index);
 }
 
 void GameDetectorSettingsDialog::updateActionModeUI(int index)
