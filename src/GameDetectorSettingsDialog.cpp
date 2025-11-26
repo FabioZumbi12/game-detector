@@ -112,6 +112,13 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	noGameCommandInput->setPlaceholderText(obs_module_text("Settings.Command.NoGame.Placeholder"));
 	twitchActionLayout->addRow(noGameCommandLabel, noGameCommandInput);
 
+	QHBoxLayout *delayLayout = new QHBoxLayout();
+	delayLabel = new QLabel(obs_module_text("Settings.ActionDelay"));
+	delaySpinBox = new QSpinBox();
+	delaySpinBox->setRange(5, 300);
+	delaySpinBox->setSuffix(obs_module_text("Settings.Seconds"));
+	twitchActionLayout->addRow(delayLabel, delaySpinBox);
+
 	connect(twitchActionComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
 		updateActionModeUI(index);
 	});
@@ -171,6 +178,7 @@ void GameDetectorSettingsDialog::loadSettings()
 	twitchActionComboBox->setCurrentIndex(ConfigManager::get().getTwitchActionMode());
 	commandInput->setText(ConfigManager::get().getCommand());
 	noGameCommandInput->setText(ConfigManager::get().getNoGameCommand());
+	delaySpinBox->setValue(ConfigManager::get().getTwitchActionDelay());
 	updateActionModeUI(twitchActionComboBox->currentIndex());
 
 	scanSteamCheckbox->setChecked(ConfigManager::get().getScanSteam());
@@ -189,6 +197,7 @@ void GameDetectorSettingsDialog::saveSettings()
 	obs_data_set_int(settings, "twitch_action_mode", twitchActionComboBox->currentData().toInt());
 	obs_data_set_string(settings, "twitch_command_message", commandInput->text().toStdString().c_str());
 	obs_data_set_string(settings, "twitch_command_no_game", noGameCommandInput->text().toStdString().c_str());
+	obs_data_set_int(settings, ConfigManager::TWITCH_ACTION_DELAY_KEY, delaySpinBox->value());
 
 	obs_data_set_bool(settings, ConfigManager::SCAN_STEAM_KEY, scanSteamCheckbox->isChecked());
 	obs_data_set_bool(settings, ConfigManager::SCAN_EPIC_KEY, scanEpicCheckbox->isChecked());
@@ -218,6 +227,9 @@ void GameDetectorSettingsDialog::updateActionModeUI(int index)
 	commandInput->setVisible(!isApiMode);
 	noGameCommandLabel->setVisible(!isApiMode);
 	noGameCommandInput->setVisible(!isApiMode);
+
+	delayLabel->setVisible(true);
+	delaySpinBox->setVisible(true);
 }
 
 void GameDetectorSettingsDialog::onAuthenticationFinished(bool success, const QString &username)

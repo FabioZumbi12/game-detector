@@ -33,6 +33,7 @@ void ConfigManager::load()
 		obs_data_set_bool(settings, SCAN_PERIODICALLY_KEY, false);
 		obs_data_set_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY, 60);
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
+		obs_data_set_int(settings, TWITCH_ACTION_DELAY_KEY, 30);
 
 		obs_data_array_t *empty_array = obs_data_array_create();
 		obs_data_set_array(settings, MANUAL_GAMES_KEY, empty_array);
@@ -88,16 +89,14 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, TWITCH_CHANNEL_LOGIN_KEY))
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
 
+	if (!obs_data_has_user_value(settings, TWITCH_ACTION_DELAY_KEY))
+		obs_data_set_int(settings, TWITCH_ACTION_DELAY_KEY, 30);
+
 	if (!obs_data_has_user_value(settings, MANUAL_GAMES_KEY)) {
 		obs_data_array_t *empty_array = obs_data_array_create();
 		obs_data_set_array(settings, MANUAL_GAMES_KEY, empty_array);
 		obs_data_array_release(empty_array);
 	}
-}
-
-void ConfigManager::setSettings(obs_data_t *settings_data)
-{
-	this->settings = settings_data;
 }
 
 void ConfigManager::save(obs_data_t *data)
@@ -126,17 +125,6 @@ void ConfigManager::save(obs_data_t *data)
 	} else {
 		blog(LOG_WARNING, "[GameDetector] Failed to save config to: %s", config_path_c);
 	}
-}
-
-void ConfigManager::save(const QString &token, const QString &command)
-{
-	if (!settings)
-		return;
-
-	obs_data_set_string(settings, TOKEN_KEY, token.toUtf8().constData());
-	obs_data_set_string(settings, COMMAND_KEY, command.toUtf8().constData());
-
-	save(settings);
 }
 
 void ConfigManager::saveManualGames(obs_data_array_t *gamesArray)
@@ -263,6 +251,13 @@ int ConfigManager::getScanPeriodicallyInterval() const
 	if (!settings)
 		return 60;
 	return (int)obs_data_get_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY);
+}
+
+int ConfigManager::getTwitchActionDelay() const
+{
+	if (!settings)
+		return 30;
+	return (int)obs_data_get_int(settings, TWITCH_ACTION_DELAY_KEY);
 }
 
 void ConfigManager::setToken(const QString &value)

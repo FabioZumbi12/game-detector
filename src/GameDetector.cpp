@@ -142,6 +142,9 @@ void GameDetector::stopScanning()
 		blog(LOG_INFO, "[GameDetector] Stopping process scanning.");
 		scanTimer->stop();
 	}
+	if (periodicScanTimer->isActive()) {
+		periodicScanTimer->stop();
+	}
 }
 
 const QSet<QString> ignoreFullNames = {
@@ -570,7 +573,7 @@ void GameDetector::scanProcesses()
 							if (processName != currentGameProcess) {
 								currentGameProcess = processName;
 								blog(LOG_INFO, "[GameDetector] Game detected: %s (Process: %s)", friendlyName.toStdString().c_str(), processName.toStdString().c_str());
-								emit gameDetected(friendlyName, processName);
+								emit gameDetected(friendlyName);
 							}
 							gameFoundThisScan = true;
 							CloseHandle(hProcess);

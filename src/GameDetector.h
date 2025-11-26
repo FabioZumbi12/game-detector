@@ -48,7 +48,7 @@ public:
 	void mergeAndSaveGames(const QList<std::tuple<QString, QString, QString>> &foundGames);
 
 signals:
-	void gameDetected(const QString &gameName, const QString &processName);
+	void gameDetected(const QString &gameName);
 	void noGameDetected();
 	void automaticScanFinished(const QList<std::tuple<QString, QString, QString>> &foundGames);
 	void gameFoundDuringScan(int totalFound);

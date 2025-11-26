@@ -9,6 +9,7 @@
 
 #include "GameDetectorSettingsDialog.h"
 #include "GameDetectorDock.h"
+#include "TwitchAuthManager.h"
 
 static GameDetectorDock *g_dock_widget = nullptr;
 
@@ -31,6 +32,9 @@ bool obs_module_load(void)
 {
 	blog(LOG_INFO, "[GameDetector] Plugin loaded.");
 
+	ConfigManager::get().load();
+	TwitchAuthManager::get().loadToken();
+
 	GameDetectorDock *dockWidget = new GameDetectorDock();
 	obs_frontend_add_dock_by_id("game_detector", "Game Detector", dockWidget);
 	g_dock_widget = dockWidget;
@@ -39,7 +43,6 @@ bool obs_module_load(void)
 	obs_frontend_add_tools_menu_item(obs_module_text("Settings.ToolsMenu"), open_settings_dialog, nullptr);
 	blog(LOG_INFO, "[GameDetector] Tools menu item added.");
 
-	ConfigManager::get().load();
 	get_dock()->loadSettingsFromConfig();
 	blog(LOG_INFO, "[GameDetector] Config file path: %s", obs_module_config_path("config.json"));
 
@@ -71,9 +74,6 @@ void obs_module_unload(void)
 
 	GameDetector::get().stopScanning();
 
-	obs_data_t *settings = ConfigManager::get().getSettings();
-	if (settings) {
-		ConfigManager::get().save(settings);
-		obs_data_release(settings);
-	}
+	// Salva as configurações atuais que estão em memória
+	ConfigManager::get().save(ConfigManager::get().getSettings());
 }

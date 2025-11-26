@@ -48,7 +48,7 @@ private slots:
 public slots:
 	void startAuthentication();
 	void clearAuthentication();
-	void handleReauthenticationRequest();
+	void loadToken();
 
 private:
 	TwitchAuthManager(QObject *parent = nullptr);

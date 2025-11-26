@@ -32,6 +32,8 @@ private:
 	QLineEdit   *commandInput = nullptr;
 	QLabel      *noGameCommandLabel = nullptr;
 	QLineEdit   *noGameCommandInput = nullptr;
+	QLabel 		*delayLabel = nullptr;
+	QSpinBox 	*delaySpinBox = nullptr;
 	QComboBox   *twitchActionComboBox = nullptr;
 	QCheckBox   *scanSteamCheckbox = nullptr;
 	QCheckBox   *scanEpicCheckbox = nullptr;

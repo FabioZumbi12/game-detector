@@ -20,6 +20,7 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QTime>
 #include <obs.h>
 
 GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
@@ -31,11 +32,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
 	statusLabel->setWordWrap(true);
 	mainLayout->addWidget(statusLabel); 
-
-	QFrame *separator1 = new QFrame();
-	separator1->setFrameShape(QFrame::HLine);
-	separator1->setFrameShadow(QFrame::Sunken);
-	mainLayout->addWidget(separator1);
 
 	QFormLayout *executionLayout = new QFormLayout();
 	executionLayout->setContentsMargins(0, 5, 0, 5);
@@ -72,6 +68,10 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	connect(&TwitchChatBot::get(), &TwitchChatBot::authenticationRequired, this,
 		&GameDetectorDock::onAuthenticationRequired);
 
+	connect(&TwitchChatBot::get(), &TwitchChatBot::cooldownStarted, this, &GameDetectorDock::onCooldownStarted);
+	connect(&TwitchChatBot::get(), &TwitchChatBot::cooldownFinished, this, &GameDetectorDock::onCooldownFinished);
+
+
 	connect(autoExecuteCheckbox, &QCheckBox::checkStateChanged, this, &GameDetectorDock::onSettingsChanged);
 
 	saveDelayTimer = new QTimer(this);
@@ -80,6 +80,9 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	connect(saveDelayTimer, &QTimer::timeout, this, &GameDetectorDock::saveDockSettings);
 
 	connect(&ConfigManager::get(), &ConfigManager::settingsSaved, this, &GameDetectorDock::checkWarningsAndStatus);
+
+	cooldownUpdateTimer = new QTimer(this);
+	connect(cooldownUpdateTimer, &QTimer::timeout, this, &GameDetectorDock::updateCooldownLabel);
 
 	statusCheckTimer = new QTimer(this);
 	connect(statusCheckTimer, &QTimer::timeout, this, &GameDetectorDock::checkWarningsAndStatus);
@@ -109,98 +112,56 @@ void GameDetectorDock::onSettingsChanged()
 	saveDelayTimer->start();
 }
 
-void GameDetectorDock::onGameDetected(const QString &gameName, const QString &processName)
+void GameDetectorDock::onGameDetected(const QString &gameName)
 {
 	this->detectedGameName = gameName;
-	statusLabel->setText(QString(obs_module_text("Status.Playing")).arg(gameName));
-
-	if (autoExecuteCheckbox->isChecked()) {
-		int actionMode = ConfigManager::get().getTwitchActionMode();
-		if (actionMode == 0) {
-			executeAction(gameName);
-		} else {
-			TwitchChatBot::get().updateCategory(gameName);
-		}
-	}
+	this->desiredCategory = gameName;
+	checkWarningsAndStatus();
 }
 
 void GameDetectorDock::onNoGameDetected()
 {
-	this->detectedGameName.clear();
-	statusLabel->setText(obs_module_text("Status.Waiting"));
-
-	if (autoExecuteCheckbox->isChecked()) {
-		QString noGameCommand = ConfigManager::get().getNoGameCommand();
-		int actionMode = ConfigManager::get().getTwitchActionMode();
-		if (actionMode == 0) {
-			if (!noGameCommand.isEmpty()) {
-				TwitchChatBot::get().sendChatMessage(noGameCommand);
-			}
-		} else {
-			TwitchChatBot::get().updateCategory("Just Chatting");
-		}
-	}
+	this->detectedGameName = "Just Chatting";
+	this->desiredCategory = "Just Chatting";
+	checkWarningsAndStatus();
 }
 
 void GameDetectorDock::onExecuteCommandClicked()
 {
-	int actionMode = ConfigManager::get().getTwitchActionMode();
-	if (!detectedGameName.isEmpty()) {
-		if (actionMode == 0) {
-			executeAction(detectedGameName);
-		} else {
-			TwitchChatBot::get().updateCategory(detectedGameName);
-		}
-	} else {
-		QString noGameCommand = ConfigManager::get().getNoGameCommand();
-		if (actionMode == 0) {
-			TwitchChatBot::get().sendChatMessage(noGameCommand);
-		} else {
-			TwitchChatBot::get().updateCategory("Just Chatting");
-		}
+	if (TwitchChatBot::get().isOnCooldown()) {
+		return;
 	}
+	this->desiredCategory = detectedGameName;
+	TwitchChatBot::get().updateCategory(desiredCategory);
 }
 
 void GameDetectorDock::onSetJustChattingClicked()
 {
-	int actionMode = ConfigManager::get().getTwitchActionMode();
-	if (actionMode == 0) {
-		QString noGameCommand = ConfigManager::get().getNoGameCommand();
-		if (!noGameCommand.isEmpty())
-			TwitchChatBot::get().sendChatMessage(noGameCommand);
-	} else {
-		TwitchChatBot::get().updateCategory("Just Chatting");
+	if (TwitchChatBot::get().isOnCooldown()) {
+		return;
 	}
+	this->desiredCategory = "Just Chatting";
+	TwitchChatBot::get().updateCategory(desiredCategory);
 }
 
 void GameDetectorDock::loadSettingsFromConfig()
 {
 	autoExecuteCheckbox->blockSignals(true);
-
 	autoExecuteCheckbox->setChecked(ConfigManager::get().getExecuteAutomatically());
-
 	autoExecuteCheckbox->blockSignals(false);
 	checkWarningsAndStatus();
 }
 
-void GameDetectorDock::executeAction(const QString &gameName)
-{
-	QString commandTemplate = ConfigManager::get().getCommand();
-	if (commandTemplate.isEmpty()) return;
-
-	QString command = commandTemplate.replace("{game}", gameName);
-	TwitchChatBot::get().sendChatMessage(command);
-}
-
 void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString)
 {
+	cooldownUpdateTimer->stop(); // Pausa o timer do cooldown para mostrar a mensagem
 	if (success) {
 		statusLabel->setText(QString(obs_module_text("Dock.CategoryUpdated")).arg(gameName));
 	} else {
 		statusLabel->setText(QString(errorString).arg(gameName));
 	}
 
-	QTimer::singleShot(3000, this, &GameDetectorDock::restoreStatusLabel);
+	QTimer::singleShot(3000, this, &GameDetectorDock::restoreStatusLabel); // Restaura o status após 3 segundos
 }
 
 void GameDetectorDock::checkWarningsAndStatus()
@@ -216,13 +177,36 @@ void GameDetectorDock::checkWarningsAndStatus()
 		return;
 	}
 
+	if (TwitchChatBot::get().isOnCooldown()) {
+		if (!cooldownUpdateTimer->isActive()) {
+			int remaining = TwitchChatBot::get().getCooldownRemaining();
+			if (remaining > 0) onCooldownStarted(remaining);
+		}
+		return;
+	}
+
+	if (autoExecuteCheckbox->isChecked()) {
+		TwitchChatBot::get().updateCategory(desiredCategory);
+	}
+
 	restoreStatusLabel();
 }
 
 void GameDetectorDock::restoreStatusLabel()
 {
-	if (!detectedGameName.isEmpty())
+	if (cooldownUpdateTimer->isActive()) {
+		// Se o timer já estiver ativo, não faz nada para não interromper a contagem
+	} else if (TwitchChatBot::get().isOnCooldown()) {
+		cooldownUpdateTimer->start(1000); // Retoma o timer do cooldown
+	}
+
+	if (detectedGameName != "Just Chatting")
 		statusLabel->setText(QString(obs_module_text("Status.Playing")).arg(detectedGameName));
+	else if (TwitchChatBot::get().getLastSetCategory() == "Just Chatting") {
+		statusLabel->setText(obs_module_text("Status.Waiting"));
+	} else if (!TwitchChatBot::get().getLastSetCategory().isEmpty()) {
+		statusLabel->setText(QString(obs_module_text("Status.Playing")).arg(TwitchChatBot::get().getLastSetCategory()));
+	}
 	else {
 		statusLabel->setText(obs_module_text("Status.Waiting"));
 	}
@@ -250,6 +234,40 @@ void GameDetectorDock::onAuthenticationRequired()
 	}
 }
 
+void GameDetectorDock::onCooldownStarted(int seconds)
+{
+	GameDetector::get().stopScanning(); // Pausa a detecção de jogos
+	cooldownUpdateTimer->setProperty("remaining", seconds);
+	updateCooldownLabel();
+	cooldownUpdateTimer->start(1000);
+}
+
+void GameDetectorDock::onCooldownFinished()
+{
+	cooldownUpdateTimer->stop();
+	GameDetector::get().startScanning(); // Retoma a detecção de jogos
+	checkWarningsAndStatus(); // Força uma verificação imediata do estado
+}
+
+void GameDetectorDock::updateCooldownLabel()
+{
+	int remaining = cooldownUpdateTimer->property("remaining").toInt();
+	if (remaining >= 0) {
+		QString timeStr = QTime(0, 0).addSecs(remaining).toString("mm:ss");
+		QString currentGameText =
+			QString(obs_module_text("Status.Playing"))
+				.arg(desiredCategory);
+		statusLabel->setText(QString(obs_module_text("Dock.OnCooldown"))
+					 .arg(currentGameText).arg(timeStr));
+		cooldownUpdateTimer->setProperty("remaining", remaining - 1);
+	} else {
+		onCooldownFinished(); // O contador chegou a zero, agora finaliza.
+	}
+}
+
 GameDetectorDock::~GameDetectorDock()
 {
+	if (cooldownUpdateTimer->isActive()) cooldownUpdateTimer->stop();
+	if (saveDelayTimer->isActive()) saveDelayTimer->stop();
+	if (statusCheckTimer->isActive()) statusCheckTimer->stop();
 }

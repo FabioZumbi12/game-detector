@@ -18,20 +18,36 @@ TwitchChatBot::TwitchChatBot()
 	categoryUpdateWatcher = new QFutureWatcher<void *>(this);
 	chatMessageWatcher = new QFutureWatcher<bool>(this);
 
+	cooldownTimer = new QTimer(this);
+	cooldownTimer->setSingleShot(true);
+	connect(cooldownTimer, &QTimer::timeout, [this]() {
+		onCooldown = false;
+		emit cooldownFinished();
+	});
+
 	connect(gameIdWatcher, &QFutureWatcher<QString>::finished, this, &TwitchChatBot::onGameIdReceived);
 	connect(categoryUpdateWatcher, &QFutureWatcher<void *>::finished, this, &TwitchChatBot::onCategoryUpdateCompleted);
 	connect(chatMessageWatcher, &QFutureWatcher<bool>::finished, this, &TwitchChatBot::onChatMessageSent);
+	connect(&TwitchAuthManager::get(), &TwitchAuthManager::reauthenticationNeeded, this, &TwitchChatBot::authenticationRequired);
 }
 
 TwitchChatBot::~TwitchChatBot()
 {
+	if (cooldownTimer->isActive()) {
+		cooldownTimer->stop();
+	}
 }
 
-void TwitchChatBot::sendChatMessage(const QString &message)
+bool TwitchChatBot::sendChatMessage(const QString &message)
 {
+	if (onCooldown) {
+		blog(LOG_INFO, "[GameDetector/ChatBot] Action is on cooldown. Ignoring new request.");
+		return false;
+	}
+
 	if (chatMessageWatcher->isRunning()) {
 		blog(LOG_INFO, "[GameDetector/ChatBot] Chat message sending already in progress. Ignoring new request.");
-		return;
+		return false;
 	}
 
 	QString broadcasterId = ConfigManager::get().getUserId();
@@ -40,37 +56,62 @@ void TwitchChatBot::sendChatMessage(const QString &message)
 	if (broadcasterId.isEmpty()) {
 		blog(LOG_WARNING, "[GameDetector/ChatBot] Attempt to send message without authentication.");
 		emit authenticationRequired();
-		return;
+		return false;
 	}
 
 	chatMessageWatcher->setProperty("message", message);
 
 	QFuture<bool> future = TwitchAuthManager::get().sendChatMessage(broadcasterId, senderId, message);
 	chatMessageWatcher->setFuture(future);
+	return true;
 }
 
 bool TwitchChatBot::updateCategory(const QString &gameName)
 {
+	if (isOnCooldown()) {
+		blog(LOG_INFO, "[GameDetector/ChatBot] Action is on cooldown. Ignoring new request.");
+		return false;
+	}
+
+	if (getLastSetCategory() == gameName) {
+		blog(LOG_INFO, "[GameDetector] Category '%s' is already set. Skipping update.", gameName.toStdString().c_str());
+		return false;
+	}
+
 	blog(LOG_INFO, "[GameDetector/ChatBot] Changing category to: %s", gameName.toStdString().c_str());
-	if (lastSetCategoryName == gameName) {
-		blog(LOG_INFO, "[GameDetector/ChatBot] Category '%s' is already set. Skipping update.", gameName.toStdString().c_str());
-		return true;
-	}
 
-	if (gameIdWatcher->isRunning() || categoryUpdateWatcher->isRunning()) {
-		blog(LOG_INFO, "[GameDetector/ChatBot] Category update already in progress. Ignoring new request.");
-		return false;
-	}
+	int actionMode = ConfigManager::get().getTwitchActionMode();
+	if (actionMode == 0) {
+		if (gameName == "Just Chatting"){
+			QString noGameCommand = ConfigManager::get().getNoGameCommand();
+			if (!noGameCommand.isEmpty()) {
+				if (sendChatMessage(noGameCommand))
+					setLastSetCategory("Just Chatting");
+			}
+		} else {
+			QString gameCommand = ConfigManager::get().getCommand();
+			if (!gameCommand.isEmpty()) {
+				if (sendChatMessage(gameCommand.replace("{game}", gameName)))
+					setLastSetCategory(gameName);
+			}
+		}
+	} else {
+		if (gameIdWatcher->isRunning() || categoryUpdateWatcher->isRunning()) {
+			blog(LOG_INFO, "[GameDetector/ChatBot] Category update already in progress. Ignoring new request.");
+			return false;
+		}
 
-	if (TwitchAuthManager::get().getUserId().isEmpty()) {
-		blog(LOG_WARNING, "[GameDetector/ChatBot] Attempt to change category without authentication.");
-		emit authenticationRequired();
-		return false;
-	}
-	gameIdWatcher->setProperty("gameName", gameName);
+		if (TwitchAuthManager::get().getUserId().isEmpty()) {
+			blog(LOG_WARNING, "[GameDetector/ChatBot] Attempt to change category without authentication.");
+			emit authenticationRequired();
+			return false;
+		}
 
-	QFuture<QString> gameIdFuture = TwitchAuthManager::get().getGameId(gameName);
-	gameIdWatcher->setFuture(gameIdFuture);
+		gameIdWatcher->setProperty("gameName", gameName);
+
+		QFuture<QString> gameIdFuture = TwitchAuthManager::get().getGameId(gameName);
+		gameIdWatcher->setFuture(gameIdFuture);
+	}
 
 	return true;
 }
@@ -106,6 +147,7 @@ void TwitchChatBot::onCategoryUpdateCompleted()
 	if (result == TwitchAuthManager::UpdateResult::Success) {
 		blog(LOG_INFO, "[GameDetector/ChatBot] Category updated successfully to '%s'.", gameName.toStdString().c_str());
 		this->lastSetCategoryName = gameName;
+		setCooldown();
 		emit categoryUpdateFinished(true, gameName);
 	} else {
 		QString errorMsg = (result == TwitchAuthManager::UpdateResult::AuthError)
@@ -121,7 +163,38 @@ void TwitchChatBot::onChatMessageSent()
 	QString message = chatMessageWatcher->property("message").toString();
 	if (chatMessageWatcher->result()) {
 		blog(LOG_INFO, "[GameDetector/ChatBot] Message sent via API: %s", message.toStdString().c_str());
+		setCooldown();
 	} else {
 		blog(LOG_WARNING, "[GameDetector/ChatBot] Failed to send message via API.");
 	}
+}
+
+void TwitchChatBot::setCooldown()
+{
+	int delaySeconds = ConfigManager::get().getTwitchActionDelay();
+	if (delaySeconds > 0) {
+		onCooldown = true;
+		cooldownTimer->start(delaySeconds * 1000);
+		emit cooldownStarted(delaySeconds);
+	}
+}
+
+bool TwitchChatBot::isOnCooldown() const
+{
+	return onCooldown;
+}
+
+int TwitchChatBot::getCooldownRemaining() const
+{
+	return onCooldown ? cooldownTimer->remainingTime() / 1000 : 0;
+}
+
+void TwitchChatBot::setLastSetCategory(const QString &categoryName)
+{
+	this->lastSetCategoryName = categoryName;
+}
+
+QString TwitchChatBot::getLastSetCategory() const
+{
+	return lastSetCategoryName;
 }

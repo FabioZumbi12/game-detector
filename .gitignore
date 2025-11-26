@@ -1,5 +1,5 @@
 # Exclude everything
-/*
+/**
 
 # Except for default project files
 !/.github

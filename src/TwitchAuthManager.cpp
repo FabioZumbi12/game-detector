@@ -24,11 +24,6 @@ TwitchAuthManager::TwitchAuthManager(QObject *parent) : QObject(parent)
 	server = new QTcpServer(this);
 
 	connect(server, &QTcpServer::newConnection, this, &TwitchAuthManager::onNewConnection);
-
-	auto settings = ConfigManager::get().getSettings();
-	accessToken = obs_data_get_string(settings, "twitch_access_token");
-	userId = obs_data_get_string(settings, "twitch_user_id");
-	connect(this, &TwitchAuthManager::reauthenticationNeeded, this, &TwitchAuthManager::handleReauthenticationRequest);
 	connect(this, &TwitchAuthManager::authenticationDataNeedsClearing, this, &TwitchAuthManager::clearAuthentication, Qt::QueuedConnection);
 }
 
@@ -37,6 +32,14 @@ TwitchAuthManager::~TwitchAuthManager()
 	if (server->isListening())
 		server->close();
 }
+
+void TwitchAuthManager::loadToken()
+{
+	auto settings = ConfigManager::get().getSettings();
+	accessToken = obs_data_get_string(settings, "twitch_access_token");
+	userId = obs_data_get_string(settings, "twitch_user_id");
+}
+
 void TwitchAuthManager::startAuthentication()
 {
 	if (isAuthenticating) {
@@ -132,6 +135,7 @@ void TwitchAuthManager::onNewConnection()
 			} else {
 				obs_data_set_string(settings, "twitch_access_token", "");
 				obs_data_set_string(settings, "twitch_user_id", "");
+				clearAuthentication(); // Limpa os dados se a obtenção do usuário falhar
 				emit authenticationFinished(false, obs_module_text("Auth.Error.GetUserIdFailed"));
 			}
  
@@ -431,8 +435,4 @@ QFuture<bool> TwitchAuthManager::sendChatMessage(const QString &broadcasterId, c
 		auto [http_code, json] = future.result();
 		return http_code == 200;
 	});
-}
-
-void TwitchAuthManager::handleReauthenticationRequest()
-{
 }

@@ -26,8 +26,6 @@ public:
 	static ConfigManager &get();
 
 	void load();
-	void setSettings(obs_data_t *settings_data);
-	void save(const QString &token, const QString &command);
 	void save(obs_data_t *settings);
 	void saveManualGames(obs_data_array_t *gamesArray);
 	obs_data_t *getSettings() const;
@@ -52,6 +50,8 @@ public:
 	void setRefreshToken(const QString &value);
 	void setUserId(const QString &value);
 	void setTwitchChannelLogin(const QString &value);
+	int getTwitchActionDelay() const;
+
 
 	static constexpr const char *SCAN_STEAM_KEY = "scan_steam";
 	static constexpr const char *SCAN_EPIC_KEY = "scan_epic";
@@ -61,6 +61,7 @@ public:
 	static constexpr const char *SCAN_ON_STARTUP_KEY = "scan_on_startup";
 	static constexpr const char *SCAN_PERIODICALLY_KEY = "scan_periodically";
 	static constexpr const char *SCAN_PERIODICALLY_INTERVAL_KEY = "scan_periodically_interval";
+	static constexpr const char *TWITCH_ACTION_DELAY_KEY = "twitch_action_delay";
 
 signals:
 	void settingsSaved();

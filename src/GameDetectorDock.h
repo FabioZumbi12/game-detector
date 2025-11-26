@@ -16,21 +16,25 @@ class GameDetectorSettingsDialog;
 class GameDetectorDock : public QWidget {
 	Q_OBJECT
 
-private:
+private: 
 	QLabel *statusLabel = nullptr;
 	QPushButton *executeCommandButton = nullptr;
 	QPushButton *setJustChattingButton = nullptr;
-	QCheckBox *autoExecuteCheckbox = nullptr;
 	QPushButton *settingsButton = nullptr;
 	GameDetectorSettingsDialog *settingsDialog = nullptr;
+	QCheckBox *autoExecuteCheckbox = nullptr;
+	QTimer *cooldownUpdateTimer = nullptr;
 
 	QString configPath;
 	QString detectedGameName;
-
-	void executeAction(const QString &gameName);
-
+	QString desiredCategory;
+ 
 	void restoreStatusLabel();
-	QTimer *saveDelayTimer = nullptr;
+	void onCooldownStarted(int seconds);
+	void onCooldownFinished();
+	void updateCooldownLabel();
+	
+	QTimer *saveDelayTimer = nullptr; 
 	QTimer *statusCheckTimer = nullptr;
 
 public:
@@ -43,7 +47,7 @@ public:
 private slots:
 	void onSettingsChanged();
 	void saveDockSettings();
-	void onGameDetected(const QString &gameName, const QString &processName);
+	void onGameDetected(const QString &gameName);
 	void onNoGameDetected();
 	void onExecuteCommandClicked();
 	void onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString);
