@@ -10,7 +10,6 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QFrame>
-#include <QStyle>
 #include <QDesktopServices>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -144,7 +143,7 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 
 	QHBoxLayout *dialogButtonsLayout = new QHBoxLayout();
 	QLabel *developerLabel = new QLabel(
-		"<small><a href=\"https://github.com/FabioZumbi12\" style=\"color: gray; text-decoration: none;\"><i>Developed by FabioZumbi12</i></a></small>");
+		"<a href=\"https://github.com/FabioZumbi12\" style=\"color: gray; text-decoration: none;\"><i>Developed by FabioZumbi12</i></a>");
 	developerLabel->setOpenExternalLinks(true);
 	okButton = new QPushButton(obs_module_text("OK"));
 	cancelButton = new QPushButton(obs_module_text("Cancel"));

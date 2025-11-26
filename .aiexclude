@@ -1,0 +1,5 @@
+.deps/*
+.vs/*
+build_*
+setup/*
+cmake/*

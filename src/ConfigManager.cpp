@@ -99,6 +99,15 @@ void ConfigManager::load()
 		obs_data_array_t *empty_array = obs_data_array_create();
 		obs_data_set_array(settings, MANUAL_GAMES_KEY, empty_array);
 		obs_data_array_release(empty_array);
+	} else {
+		obs_data_array_t* games = obs_data_get_array(settings, MANUAL_GAMES_KEY);
+		for (size_t i = 0; i < obs_data_array_count(games); ++i) {
+			obs_data_t* item = obs_data_array_item(games, i);
+			if (!obs_data_has_user_value(item, "enabled"))
+				obs_data_set_bool(item, "enabled", true);
+			obs_data_release(item);
+		}
+		obs_data_array_release(games);
 	}
 }
 

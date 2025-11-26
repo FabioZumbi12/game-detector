@@ -13,6 +13,7 @@
 #include <QStyle>
 #include <QFileDialog>
 #include <QGroupBox>
+#include <QCheckBox>
 #include <obs-module.h>
 
 GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(parent)
@@ -26,24 +27,31 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 	QVBoxLayout *gamesLayout = new QVBoxLayout();
 
 	manualGamesTable = new QTableWidget();
-	manualGamesTable->setColumnCount(4);
-	manualGamesTable->setHorizontalHeaderLabels(QStringList() << obs_module_text("Table.Header.Name")
+	manualGamesTable->setColumnCount(5);
+	manualGamesTable->setHorizontalHeaderLabels(QStringList() << ""
+								<< obs_module_text("Table.Header.Name")
 								<< obs_module_text("Table.Header.Executable")
 								<< obs_module_text("Table.Header.Path")
 								<< obs_module_text("Table.Header.Actions"));
-	manualGamesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+	manualGamesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 	manualGamesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-	manualGamesTable->setColumnHidden(2, true);
-	manualGamesTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+	manualGamesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+	manualGamesTable->setColumnHidden(3, true);
+	manualGamesTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
 	gamesLayout->addWidget(manualGamesTable);
 
 	QHBoxLayout *tableButtonsLayout = new QHBoxLayout();
 	addGameButton = new QPushButton(obs_module_text("Settings.AddGame"));
+	addGameButton->setIcon(style()->standardIcon(QStyle::SP_FileIcon));
 	clearTableButton = new QPushButton(obs_module_text("Settings.ClearList"));
+	clearTableButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+	toggleAllButton = new QPushButton(obs_module_text("GameList.ToggleAll"));
+	toggleAllButton->setIcon(style()->standardIcon(QStyle::SP_DialogApplyButton));
 	rescanButton = new QPushButton(obs_module_text("Settings.ScanGames"));
 	rescanButton->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
 	rescanButton->setProperty("baseText", rescanButton->text());
 	tableButtonsLayout->addWidget(addGameButton);
+	tableButtonsLayout->addWidget(toggleAllButton);
 	tableButtonsLayout->addWidget(clearTableButton);
 	tableButtonsLayout->addWidget(rescanButton);
 	tableButtonsLayout->addStretch(1);
@@ -56,7 +64,7 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 	okButton = new QPushButton(obs_module_text("OK"));
 	cancelButton = new QPushButton(obs_module_text("Cancel"));
     QLabel *developerLabel = new QLabel(
-		"<small><a href=\"https://github.com/FabioZumbi12\" style=\"color: gray; text-decoration: none;\"><i>Developed by FabioZumbi12</i></a></small>");
+		"<a href=\"https://github.com/FabioZumbi12\" style=\"color: gray; text-decoration: none;\"><i>Developed by FabioZumbi12</i></a>");
 	developerLabel->setOpenExternalLinks(true);
 	dialogButtonsLayout->addStretch(1);
 	dialogButtonsLayout->addWidget(developerLabel);
@@ -66,6 +74,7 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 
 	connect(addGameButton, &QPushButton::clicked, this, &GameListDialog::onAddGameClicked);
 	connect(clearTableButton, &QPushButton::clicked, this, &GameListDialog::onClearTableClicked);
+	connect(toggleAllButton, &QPushButton::clicked, this, &GameListDialog::onToggleAllClicked);
 	connect(rescanButton, &QPushButton::clicked, this, [this]() {
 		rescanButton->setEnabled(false);
 		rescanButton->setText(obs_module_text("Settings.Scanning"));
@@ -96,19 +105,30 @@ void GameListDialog::loadGames()
 			QString gameName = obs_data_get_string(item, "name");
 			QString exeName = obs_data_get_string(item, "exe");
 			QString exePath = obs_data_get_string(item, "path");
+			bool enabled = obs_data_get_bool(item, "enabled");
 
 			int newRow = manualGamesTable->rowCount();
 			manualGamesTable->insertRow(newRow);
+
+			QCheckBox *enabledCheckbox = new QCheckBox();
+			enabledCheckbox->setChecked(enabled);
+			QWidget *checkboxWidget = new QWidget();
+			QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+			checkboxLayout->addWidget(enabledCheckbox);
+			checkboxLayout->setAlignment(Qt::AlignCenter);
+			checkboxLayout->setContentsMargins(0,0,0,0);
+			manualGamesTable->setCellWidget(newRow, 0, checkboxWidget);
+
 			QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
 			nameItem->setIcon(IconProvider::getIconForFile(exePath));
-			manualGamesTable->setItem(newRow, 0, nameItem);
-			manualGamesTable->setItem(newRow, 1, new QTableWidgetItem(exeName));
-			manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exePath));
+			manualGamesTable->setItem(newRow, 1, nameItem);
+			manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exeName));
+			manualGamesTable->setItem(newRow, 3, new QTableWidgetItem(exePath));
 
 			QPushButton *removeRowButton = new QPushButton();
 			removeRowButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
 			connect(removeRowButton, &QPushButton::clicked, this, [this, newRow]() { manualGamesTable->removeRow(newRow); });
-			manualGamesTable->setCellWidget(newRow, 3, removeRowButton);
+			manualGamesTable->setCellWidget(newRow, 4, removeRowButton);
 
 			obs_data_release(item);
 		}
@@ -122,10 +142,14 @@ void GameListDialog::saveGames()
 
 	obs_data_array_t *gamesArray = obs_data_array_create();
 	for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
+		QWidget* cellWidget = manualGamesTable->cellWidget(i, 0);
+		QCheckBox* checkbox = cellWidget ? cellWidget->findChild<QCheckBox*>() : nullptr;
+
 		obs_data_t *item = obs_data_create();
-		obs_data_set_string(item, "name", manualGamesTable->item(i, 0)->text().toStdString().c_str());
-		obs_data_set_string(item, "exe", manualGamesTable->item(i, 1)->text().toStdString().c_str());
-		obs_data_set_string(item, "path", manualGamesTable->item(i, 2)->text().toStdString().c_str());
+		obs_data_set_bool(item, "enabled", checkbox ? checkbox->isChecked() : true);
+		obs_data_set_string(item, "name", manualGamesTable->item(i, 1)->text().toStdString().c_str());
+		obs_data_set_string(item, "exe", manualGamesTable->item(i, 2)->text().toStdString().c_str());
+		obs_data_set_string(item, "path", manualGamesTable->item(i, 3)->text().toStdString().c_str());
 		obs_data_array_push_back(gamesArray, item);
 		obs_data_release(item);
 	}
@@ -160,16 +184,26 @@ void GameListDialog::onAddGameClicked()
 
 	int newRow = manualGamesTable->rowCount();
 	manualGamesTable->insertRow(newRow);
+
+	QCheckBox *enabledCheckbox = new QCheckBox();
+	enabledCheckbox->setChecked(true);
+	QWidget *checkboxWidget = new QWidget();
+	QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+	checkboxLayout->addWidget(enabledCheckbox);
+	checkboxLayout->setAlignment(Qt::AlignCenter);
+	checkboxLayout->setContentsMargins(0,0,0,0);
+	manualGamesTable->setCellWidget(newRow, 0, checkboxWidget);
+
 	QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
 	nameItem->setIcon(IconProvider::getIconForFile(filePath));
-	manualGamesTable->setItem(newRow, 0, nameItem);
-	manualGamesTable->setItem(newRow, 1, new QTableWidgetItem(exeName));
-	manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(filePath));
+	manualGamesTable->setItem(newRow, 1, nameItem);
+	manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exeName));
+	manualGamesTable->setItem(newRow, 3, new QTableWidgetItem(filePath));
 
 	QPushButton *removeRowButton = new QPushButton();
 	removeRowButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
 	connect(removeRowButton, &QPushButton::clicked, this, [this, newRow]() { manualGamesTable->removeRow(newRow); });
-	manualGamesTable->setCellWidget(newRow, 3, removeRowButton);
+	manualGamesTable->setCellWidget(newRow, 4, removeRowButton);
 }
 
 void GameListDialog::onClearTableClicked()
@@ -177,11 +211,32 @@ void GameListDialog::onClearTableClicked()
 	manualGamesTable->setRowCount(0);
 }
 
+void GameListDialog::onToggleAllClicked()
+{
+	int rowCount = manualGamesTable->rowCount();
+	if (rowCount == 0) {
+		return;
+	}
+
+	// Determina o novo estado com base no primeiro item
+	QWidget *firstCellWidget = manualGamesTable->cellWidget(0, 0);
+	QCheckBox *firstCheckbox = firstCellWidget ? firstCellWidget->findChild<QCheckBox *>() : nullptr;
+	bool newState = firstCheckbox ? !firstCheckbox->isChecked() : true;
+
+	// Aplica o novo estado a todos os checkboxes
+	for (int i = 0; i < rowCount; ++i) {
+		QWidget *cellWidget = manualGamesTable->cellWidget(i, 0);
+		QCheckBox *checkbox = cellWidget ? cellWidget->findChild<QCheckBox *>() : nullptr;
+		if (checkbox)
+			checkbox->setChecked(newState);
+	}
+}
+
 void GameListDialog::onAutomaticScanFinished(const QList<std::tuple<QString, QString, QString>> &foundGames)
 {
 	QSet<QString> existingPaths;
 	for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
-		existingPaths.insert(manualGamesTable->item(i, 2)->text());
+		existingPaths.insert(manualGamesTable->item(i, 3)->text());
 	}
 
 	for (const auto &gameTuple : foundGames) {
@@ -195,16 +250,26 @@ void GameListDialog::onAutomaticScanFinished(const QList<std::tuple<QString, QSt
 
 		int newRow = manualGamesTable->rowCount();
 		manualGamesTable->insertRow(newRow);
+
+		QCheckBox *enabledCheckbox = new QCheckBox();
+		enabledCheckbox->setChecked(true);
+		QWidget *checkboxWidget = new QWidget();
+		QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+		checkboxLayout->addWidget(enabledCheckbox);
+		checkboxLayout->setAlignment(Qt::AlignCenter);
+		checkboxLayout->setContentsMargins(0,0,0,0);
+		manualGamesTable->setCellWidget(newRow, 0, checkboxWidget);
+
 		QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
 		nameItem->setIcon(IconProvider::getIconForFile(exePath));
-		manualGamesTable->setItem(newRow, 0, nameItem);
-		manualGamesTable->setItem(newRow, 1, new QTableWidgetItem(exeName));
-		manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exePath));
+		manualGamesTable->setItem(newRow, 1, nameItem);
+		manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exeName));
+		manualGamesTable->setItem(newRow, 3, new QTableWidgetItem(exePath));
 
 		QPushButton *removeRowButton = new QPushButton();
 		removeRowButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
 		connect(removeRowButton, &QPushButton::clicked, this, [this, newRow]() { manualGamesTable->removeRow(newRow); });
-		manualGamesTable->setCellWidget(newRow, 3, removeRowButton);
+		manualGamesTable->setCellWidget(newRow, 4, removeRowButton);
 	}
 
 	rescanButton->setEnabled(true);

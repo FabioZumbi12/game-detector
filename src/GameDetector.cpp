@@ -488,6 +488,7 @@ void GameDetector::mergeAndSaveGames(const QList<std::tuple<QString, QString, QS
 		QString exePath = std::get<2>(gameTuple);
 		if (!existingPaths.contains(exePath)) {
 			obs_data_t *item = obs_data_create();
+			obs_data_set_bool(item, "enabled", true);
 			obs_data_set_string(item, "name", std::get<0>(gameTuple).toStdString().c_str());
 			obs_data_set_string(item, "exe", std::get<1>(gameTuple).toStdString().c_str());
 			obs_data_set_string(item, "path", exePath.toStdString().c_str());
@@ -531,10 +532,13 @@ void GameDetector::loadGamesFromConfig()
 		blog(LOG_INFO, "[GameDetector] Loading %d games from manual list.", count);
 		for (size_t i = 0; i < count; ++i) {
 			obs_data_t *item = obs_data_array_item(manualGames, i);
-			QString exeName = obs_data_get_string(item, "exe");
-			QString gameName = obs_data_get_string(item, "name");
-			knownGameExes.insert(exeName);
-			gameNameMap.insert(exeName, gameName);
+			bool enabled = obs_data_get_bool(item, "enabled");
+			if (enabled) {
+				QString exeName = obs_data_get_string(item, "exe");
+				QString gameName = obs_data_get_string(item, "name");
+				knownGameExes.insert(exeName);
+				gameNameMap.insert(exeName, gameName);
+			}
 			obs_data_release(item);
 		}
 		obs_data_array_release(manualGames);

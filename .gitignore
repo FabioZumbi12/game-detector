@@ -5,7 +5,7 @@
 !/.github
 !/build-aux
 !/cmake
-!/data
+!/data**
 !/src
 !.clang-format
 !.gersemirc
@@ -17,6 +17,7 @@
 !README*.md
 !setup.iss
 !img
+!.aiexclude
 
 # Exclude lock files
 *.lock.json

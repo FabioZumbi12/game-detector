@@ -53,7 +53,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	buttonsLayout->addWidget(settingsButton);
 
 	executionLayout->addRow(buttonsLayout);
-
 	setJustChattingButton = new QPushButton(obs_module_text("Dock.SetJustChatting"));
 	executionLayout->addRow(setJustChattingButton);
 
