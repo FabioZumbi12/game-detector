@@ -44,12 +44,14 @@ public:
 	void loadSettingsFromConfig();
 	void onSetJustChattingClicked();
 
+public slots:
+	void onExecuteCommandClicked();
+
 private slots:
 	void onSettingsChanged();
 	void saveDockSettings();
 	void onGameDetected(const QString &gameName);
 	void onNoGameDetected();
-	void onExecuteCommandClicked();
 	void onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString);
 	void onAuthenticationRequired();
 	void onSettingsButtonClicked();

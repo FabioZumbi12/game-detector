@@ -17,6 +17,7 @@
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QCheckBox>
+#include <obs.h>
 #include <obs-module.h>
 #include <obs-data.h>
 

@@ -39,6 +39,14 @@ void ConfigManager::load()
 		obs_data_set_array(settings, MANUAL_GAMES_KEY, empty_array);
 		obs_data_array_release(empty_array);
 
+		obs_data_array_t *empty_hotkey_array = obs_data_array_create();
+		obs_data_set_array(settings, HOTKEY_SET_GAME_KEY, empty_hotkey_array);
+		obs_data_array_release(empty_hotkey_array);
+
+		empty_hotkey_array = obs_data_array_create();
+		obs_data_set_array(settings, HOTKEY_RESCAN_GAMES_KEY, empty_hotkey_array);
+		obs_data_array_release(empty_hotkey_array);
+
 		return;
 	}
 
@@ -109,6 +117,18 @@ void ConfigManager::load()
 		}
 		obs_data_array_release(games);
 	}
+
+	if (!obs_data_has_user_value(settings, HOTKEY_SET_GAME_KEY)) {
+		obs_data_array_t *empty_hotkey_array = obs_data_array_create();
+		obs_data_set_array(settings, HOTKEY_SET_GAME_KEY, empty_hotkey_array);
+		obs_data_array_release(empty_hotkey_array);
+	}
+
+	if (!obs_data_has_user_value(settings, HOTKEY_RESCAN_GAMES_KEY)) {
+		obs_data_array_t *empty_hotkey_array = obs_data_array_create();
+		obs_data_set_array(settings, HOTKEY_RESCAN_GAMES_KEY, empty_hotkey_array);
+		obs_data_array_release(empty_hotkey_array);
+	}
 }
 
 void ConfigManager::save(obs_data_t *data)
@@ -146,6 +166,19 @@ void ConfigManager::saveManualGames(obs_data_array_t *gamesArray)
 
 	obs_data_set_array(settings, MANUAL_GAMES_KEY, gamesArray);
 	save(settings);
+}
+
+obs_data_array_t *ConfigManager::getHotkeyData(const char *key) const
+{
+	if (!settings)
+		return nullptr;
+	return obs_data_get_array(settings, key);
+}
+
+void ConfigManager::setHotkeyData(const char *key, obs_data_array_t *hotkeyArray)
+{
+	if (!settings) return;
+	obs_data_set_array(settings, key, hotkeyArray);
 }
 
 obs_data_t *ConfigManager::getSettings() const

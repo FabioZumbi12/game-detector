@@ -24,12 +24,17 @@ private:
 	explicit ConfigManager(QObject *parent = nullptr);
 
 public:
+	static constexpr const char *HOTKEY_SET_GAME_KEY = "hotkey_set_game";
+	static constexpr const char *HOTKEY_RESCAN_GAMES_KEY = "hotkey_rescan_games";
+
 	static ConfigManager &get();
 
 	void load();
 	void save(obs_data_t *settings);
 	void saveManualGames(obs_data_array_t *gamesArray);
 	obs_data_t *getSettings() const;
+	obs_data_array_t *getHotkeyData(const char *key) const;
+	void setHotkeyData(const char *key, obs_data_array_t *hotkeyArray);
 	QString getToken() const;
 	QString getRefreshToken() const;
 	QString getUserId() const;
