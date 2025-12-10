@@ -26,8 +26,8 @@
 GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 {
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
-	mainLayout->setContentsMargins(5, 5, 5, 5);
-	this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+	// mainLayout->setContentsMargins(5, 5, 5, 5);
+	this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
 	detectedGameName = "Just Chatting";
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
@@ -35,7 +35,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	mainLayout->addWidget(statusLabel); 
 
 	QFormLayout *executionLayout = new QFormLayout();
-	executionLayout->setContentsMargins(0, 5, 0, 5);
 
 	autoExecuteCheckbox = new QCheckBox(obs_module_text("Dock.AutoExecute"));
 	executionLayout->addRow(autoExecuteCheckbox);
@@ -43,6 +42,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	// Layout horizontal para os botões de ação
 	QHBoxLayout *buttonsLayout = new QHBoxLayout();
 	executeCommandButton = new QPushButton(obs_module_text("Dock.SetGame"));
+	executeCommandButton->setFixedHeight(executeCommandButton->sizeHint().height());
 	buttonsLayout->addWidget(executeCommandButton);
 
 	settingsButton = new QPushButton();
@@ -54,6 +54,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	executionLayout->addRow(buttonsLayout);
 	setJustChattingButton = new QPushButton(obs_module_text("Dock.SetJustChatting"));
+	setJustChattingButton->setFixedHeight(executeCommandButton->sizeHint().height());
 	executionLayout->addRow(setJustChattingButton);
 
 	mainLayout->addLayout(executionLayout);
