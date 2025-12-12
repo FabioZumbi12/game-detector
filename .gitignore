@@ -1,29 +1,39 @@
-# Exclude everything
-/**
+# Ignore CMake build directories
+build/
+release/
+debug/
+install/
 
-# Except for default project files
-!/.github
-!/build-aux
-!/cmake
-!/data**
-!/src
-!.clang-format
-!.gersemirc
-!.gitignore
-!buildspec.json
-!CMakeLists.txt
-!CMakePresets.json
-!LICENSE
-!README*.md
-!setup.iss
-!img
-!.aiexclude
+# Ignore dependencies folder
+.deps/
 
-# Exclude lock files
+# Ignore user-specific files from IDEs
+*.user
+*.suo
+
+# Ignore Visual Studio Code specific files
+.vscode/
+
+# Ignore Qt Creator specific files
+*.creator
+
+# Ignore lock files
+*.lock
 *.lock.json
 
-# Exclude macOS legacy resource forks
+# Ignore macOS specific files
 .DS_Store
 
-# Exclude CMake build number cache
-/cmake/.CMakeBuildNumber
+# Ignore compiled binaries and libraries
+*.dll
+*.exe
+*.so
+*.a
+*.lib
+*.o
+*.obj
+
+.vs/
+build_*/
+setup/
+.CMakeBuildNumber
