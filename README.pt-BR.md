@@ -1,4 +1,6 @@
-[English](README.md) | [Português (BR)](README.pt-BR.md) 
+ ![Screenshot_27](https://github.com/user-attachments/assets/f3f79af3-42a4-4663-b1d0-612e7d15b11d)
+ 
+ [English](README.md) | [Português (BR)](README.pt-BR.md) 
 
 # 🎮 Game Detector OBS Plugin
 Plugin para detectar jogos instalados e integrar com Twitch  
