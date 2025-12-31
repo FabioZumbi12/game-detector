@@ -13,7 +13,7 @@ public:
     explicit TrovoAuthManager(QObject *parent = nullptr);
     ~TrovoAuthManager();
 
-    void startAuthentication(); // Chamado pela UI se necessário
+    void startAuthentication(int mode = -1, int unifiedAuth = -1); // Chamado pela UI se necessário
     bool isAuthenticated() const override;
     void updateCategory(const QString &gameName) override;
     void sendChatMessage(const QString &message) override;
@@ -35,12 +35,11 @@ private:
 
     QFuture<void> pendingTask;
 
-    const QString AUTH_API_URL = "https://trovo-obs.areaz12server.net.br"; // SEU BACKEND
-    const QString CLIENT_ID = "SEU_CLIENT_ID_DA_TROVO";
+    const QString AUTH_API_URL = "https://trovo-obs.areaz12server.net.br";
+    const QString CLIENT_ID = "b07641be5083b975423de98ee83e8e0a";
 
     void onNewConnection();
     void onAuthTimerTick();
-    void exchangeCodeForToken(const QString &code);
     void fetchUserInfo();
     void searchAndSetCategory(const QString &gameName);
 

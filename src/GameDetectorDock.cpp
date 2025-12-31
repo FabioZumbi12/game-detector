@@ -31,6 +31,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
 	detectedGameName = "Just Chatting";
+	desiredCategory = "Just Chatting";
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
 	statusLabel->setWordWrap(true);
 	mainLayout->addWidget(statusLabel);
@@ -156,6 +157,14 @@ void GameDetectorDock::loadSettingsFromConfig()
 
 void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gameName, const QString &errorString)
 {
+	if (!success) {
+		bool twitchConfigured = !ConfigManager::get().getTwitchUserId().isEmpty();
+		bool trovoConfigured = !ConfigManager::get().getTrovoUserId().isEmpty();
+
+		if (errorString.contains("Twitch") && !twitchConfigured) return;
+		if (errorString.contains("Trovo") && !trovoConfigured) return;
+	}
+
 	cooldownUpdateTimer->stop();
 	if (success) {
 		statusLabel->setText(QString(obs_module_text("Dock.CategoryUpdated")).arg(gameName));

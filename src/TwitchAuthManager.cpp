@@ -80,10 +80,10 @@ void TwitchAuthManager::loadToken()
 	userId = obs_data_get_string(settings, "twitch_user_id");
 }
 
-void TwitchAuthManager::startAuthentication(int mode)
+void TwitchAuthManager::startAuthentication(int mode, int unifiedAuth)
 {
 	if (isAuthenticating) {
-		blog(LOG_INFO, "[GameDetector/Auth] Authentication already in progress, ignoring new request.");
+		blog(LOG_INFO, "[GameDetector/TwitchAuth] Authentication already in progress, ignoring new request.");
 		return;
 	}
 
@@ -91,12 +91,12 @@ void TwitchAuthManager::startAuthentication(int mode)
 	if (server->isListening()) server->close();
 
 	if (!server->listen(QHostAddress::LocalHost, 30000)) {
-		blog(LOG_ERROR, "[GameDetector/Auth] Could not start local server.");
+		blog(LOG_ERROR, "[GameDetector/TwitchAuth] Could not start local server.");
 		emit authenticationFinished(false, "");
 		return;
 	}
 
-	blog(LOG_INFO, "[GameDetector/Auth] Local server started at http://localhost:30000/");
+	blog(LOG_INFO, "[GameDetector/TwitchAuth] Local server started at http://localhost:30000/");
 
 	QUrl authUrl("https://id.twitch.tv/oauth2/authorize");
 	QUrlQuery query;
@@ -105,17 +105,17 @@ void TwitchAuthManager::startAuthentication(int mode)
 	query.addQueryItem("redirect_uri", REDIRECT_URI);
 	query.addQueryItem("response_type", "token");
 
-	bool useUnifiedAuth = ConfigManager::get().getUnifiedAuth();
+	bool useUnifiedAuth = (unifiedAuth == -1) ? ConfigManager::get().getUnifiedAuth() : (bool)unifiedAuth;
 	int actionMode = (mode == -1) ? ConfigManager::get().getActionMode() : mode;
 
 	if (useUnifiedAuth) {
-		blog(LOG_INFO, "[GameDetector/Auth] Starting unified authentication.");
+		blog(LOG_INFO, "[GameDetector/TwitchAuth] Starting unified authentication.");
 		query.addQueryItem("scope", "user:write:chat channel:manage:broadcast");
 	} else if (actionMode == 0) { // Modo Comando de Chat
-		blog(LOG_INFO, "[GameDetector/Auth] Starting authentication in mode: Chat Command");
+		blog(LOG_INFO, "[GameDetector/TwitchAuth] Starting authentication in mode: Chat Command");
 		query.addQueryItem("scope", "user:write:chat");
 	} else { // Modo API
-		blog(LOG_INFO, "[GameDetector/Auth] Starting authentication in mode: API");
+		blog(LOG_INFO, "[GameDetector/TwitchAuth] Starting authentication in mode: API");
 		query.addQueryItem("scope", "channel:manage:broadcast");
 	}
 
@@ -137,7 +137,7 @@ void TwitchAuthManager::clearAuthentication()
 	ConfigManager::get().setTwitchUserId("");
 	ConfigManager::get().setTwitchChannelLogin("");
 	ConfigManager::get().save(ConfigManager::get().getSettings());
-	blog(LOG_INFO, "[GameDetector/Auth] In-memory and persisted authentication data cleared.");
+	blog(LOG_INFO, "[GameDetector/TwitchAuth] In-memory and persisted authentication data cleared.");
 }
 
 void TwitchAuthManager::onAuthTimerTick()
@@ -287,20 +287,20 @@ QFuture<std::pair<long, QString>> TwitchAuthManager::performGET(const QString &u
 		curl_easy_cleanup(curl);
 
 		if (res != CURLE_OK) {
-			blog(LOG_ERROR, "[GameDetector/Auth] cURL error (GET): %s", curl_easy_strerror(res));
+			blog(LOG_ERROR, "[GameDetector/TwitchAuth] cURL error (GET): %s", curl_easy_strerror(res));
 			return {0, ""};
 		}
 
 		if (http_code < 200 || http_code >= 300) {
 			if (http_code == 401) {
-				blog(LOG_WARNING, "[GameDetector/Auth] Invalid token (401 Unauthorized) in GET request to %s. Initiating reauthentication process.", url.toStdString().c_str());
+				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in GET request to %s. Initiating reauthentication process.", url.toStdString().c_str());
 				emit authenticationDataNeedsClearing();
 				emit reauthenticationNeeded();
 				return {http_code, ""};
 			} else if (http_code == 429) {
-				blog(LOG_WARNING, "[GameDetector/Auth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
+				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
 			}
-			blog(LOG_WARNING, "[GameDetector/Auth] Error in GET request to Twitch API (Status: %ld): %s", http_code, response.c_str());
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in GET request to Twitch API (Status: %ld): %s", http_code, response.c_str());
 		}
  
 		return {http_code, QString::fromStdString(response)};
@@ -343,20 +343,20 @@ QFuture<std::pair<long, QString>> TwitchAuthManager::performPATCH(const QString 
 		curl_easy_cleanup(curl);
 
 		if (res != CURLE_OK) {
-			blog(LOG_ERROR, "[GameDetector/Auth] cURL error (PATCH): %s", curl_easy_strerror(res));
+			blog(LOG_ERROR, "[GameDetector/TwitchAuth] cURL error (PATCH): %s", curl_easy_strerror(res));
 			return {0, ""};
 		}
 
 		if (http_code < 200 || http_code >= 300) {
 			if (http_code == 401) {
-				blog(LOG_WARNING, "[GameDetector/Auth] Invalid token (401 Unauthorized) in PATCH request to %s. Initiating reauthentication process.", url.toStdString().c_str());
+				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in PATCH request to %s. Initiating reauthentication process.", url.toStdString().c_str());
 				emit authenticationDataNeedsClearing();
 				emit reauthenticationNeeded();
 				return {http_code, ""};
 			} else if (http_code == 429) {
-				blog(LOG_WARNING, "[GameDetector/Auth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
+				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
 			}
-			blog(LOG_WARNING, "[GameDetector/Auth] Error in PATCH request to Twitch API (Status: %ld): %s", http_code, response.c_str());
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in PATCH request to Twitch API (Status: %ld): %s", http_code, response.c_str());
 		}
  
 		return {http_code, QString::fromStdString(response)};
@@ -399,20 +399,20 @@ QFuture<std::pair<long, QString>> TwitchAuthManager::performPOST(const QString &
 		curl_easy_cleanup(curl);
 
 		if (res != CURLE_OK) {
-			blog(LOG_ERROR, "[GameDetector/Auth] cURL error (POST): %s", curl_easy_strerror(res));
+			blog(LOG_ERROR, "[GameDetector/TwitchAuth] cURL error (POST): %s", curl_easy_strerror(res));
 			return {0, ""};
 		}
 
 		if (http_code < 200 || http_code >= 300) {
 			if (http_code == 401) {
-				blog(LOG_WARNING, "[GameDetector/Auth] Invalid token (401 Unauthorized) in POST request to %s. Initiating reauthentication process.", url.toStdString().c_str());
+				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in POST request to %s. Initiating reauthentication process.", url.toStdString().c_str());
 				emit authenticationDataNeedsClearing();
 				emit reauthenticationNeeded();
 				return {http_code, ""};
 			} else if (http_code == 429) {
-				blog(LOG_WARNING, "[GameDetector/Auth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
+				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
 			}
-			blog(LOG_WARNING, "[GameDetector/Auth] Error in POST request to Twitch API (Status: %ld): %s", http_code, response.c_str());
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in POST request to Twitch API (Status: %ld): %s", http_code, response.c_str());
 		}
  
 		return {http_code, QString::fromStdString(response)};
@@ -491,7 +491,7 @@ QFuture<TwitchAuthManager::UpdateResult> TwitchAuthManager::updateChannelCategor
 QFuture<bool> TwitchAuthManager::sendChatMessage(const QString &broadcasterId, const QString &senderId, const QString &message)
 {
 	if (broadcasterId.isEmpty() || senderId.isEmpty() || message.isEmpty()) {
-		blog(LOG_WARNING, "[GameDetector/Auth] Attempt to send chat message with incomplete data.");
+		blog(LOG_WARNING, "[GameDetector/TwitchAuth] Attempt to send chat message with incomplete data.");
 		QFuture<bool> future = QtConcurrent::run([=]() {
             return false;  // seu resultado
         });

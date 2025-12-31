@@ -49,7 +49,7 @@ private slots:
 	void onAuthTimerTick();
 
 public slots:
-	void startAuthentication(int mode = -1);
+	void startAuthentication(int mode = -1, int unifiedAuth = -1);
 	void clearAuthentication();
 	void loadToken();
 

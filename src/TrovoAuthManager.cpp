@@ -46,7 +46,7 @@ bool TrovoAuthManager::isAuthenticated() const
     return !accessToken.isEmpty() && !userId.isEmpty();
 }
 
-void TrovoAuthManager::startAuthentication()
+void TrovoAuthManager::startAuthentication(int mode, int unifiedAuth)
 {
     if (isAuthenticating) return;
     
@@ -58,7 +58,17 @@ void TrovoAuthManager::startAuthentication()
     QUrlQuery query;
     query.addQueryItem("client_id", CLIENT_ID);
     query.addQueryItem("response_type", "code");
-    query.addQueryItem("scope", "channel_update_self user_details_my chat_send_self");
+    
+    bool useUnifiedAuth = (unifiedAuth == -1) ? ConfigManager::get().getUnifiedAuth() : (bool)unifiedAuth;
+    int actionMode = (mode == -1) ? ConfigManager::get().getActionMode() : mode;
+
+    QString scope;
+    if (useUnifiedAuth) {
+        scope = "channel_update_self+user_details_self+chat_send_self";
+    } else {
+        scope = (actionMode == 0) ? "user_details_self+chat_send_self" : "channel_update_self+user_details_self";
+    }
+    query.addQueryItem("scope", scope);
     query.addQueryItem("redirect_uri", AUTH_API_URL);
     authUrl.setQuery(query);
     QDesktopServices::openUrl(authUrl);
@@ -87,43 +97,48 @@ void TrovoAuthManager::onNewConnection()
     QTcpSocket *clientSocket = server->nextPendingConnection();
     if (!clientSocket) return;
 
-    authTimeoutTimer->stop();
-    emit authenticationTimerTick(0);
+    connect(clientSocket, &QTcpSocket::disconnected, clientSocket, &QTcpSocket::deleteLater);
 
     connect(clientSocket, &QTcpSocket::readyRead, this, [this, clientSocket]() {
         QString request = clientSocket->readAll();
+        blog(LOG_INFO, "[GameDetector/TrovoAuth] Request received: %s", request.toStdString().c_str());
+
         QStringList reqLines = request.split("\r\n");
         if (reqLines.isEmpty()) return;
 
         QString firstLine = reqLines.first();
+        
+        // Handle CORS Preflight
+        if (firstLine.startsWith("OPTIONS")) {
+            clientSocket->write("HTTP/1.1 204 No Content\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, OPTIONS\r\nAccess-Control-Allow-Headers: *\r\n\r\n");
+            clientSocket->flush();
+            clientSocket->disconnectFromHost();
+            return;
+        }
+
         QString path = firstLine.split(" ")[1];
         QUrl url(path);
         QUrlQuery query(url.query());
-        QString code = query.queryItemValue("code");
+        QString token = query.queryItemValue("token");
 
-        if (!code.isEmpty()) {
-            QString msg = obs_module_text("Auth.LoginAuthorized");
-            clientSocket->write("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n" + msg.toUtf8());
+        if (!token.isEmpty()) {
+            blog(LOG_INFO, "[GameDetector/TrovoAuth] Token extracted. Fetching user info...");
+            QString msg = "Token received.";
+            clientSocket->write("HTTP/1.1 200 OK\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain\r\n\r\n" + msg.toUtf8());
+            clientSocket->flush();
             clientSocket->disconnectFromHost();
+            
+            authTimeoutTimer->stop();
+            emit authenticationTimerTick(0);
             server->close();
             isAuthenticating = false;
-            exchangeCodeForToken(code);
-        }
-    });
-}
-
-void TrovoAuthManager::exchangeCodeForToken(const QString &code)
-{
-    QJsonObject json;
-    json["code"] = code;
-    auto future = performPOST(AUTH_API_URL, json, "");
-    
-    pendingTask = QtConcurrent::run([this, future]() {
-        auto result = future.result();
-        if (result.first == 200) {
-            QJsonDocument doc = QJsonDocument::fromJson(result.second.toUtf8());
-            this->accessToken = doc.object()["access_token"].toString();
+            this->accessToken = token;
             fetchUserInfo();
+        } else {
+            blog(LOG_WARNING, "[GameDetector/TrovoAuth] No token found in request: %s", path.toStdString().c_str());
+            clientSocket->write("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+            clientSocket->flush();
+            clientSocket->disconnectFromHost();
         }
     });
 }
@@ -134,6 +149,7 @@ void TrovoAuthManager::fetchUserInfo()
     pendingTask = QtConcurrent::run([this, future]() {
         auto result = future.result();
         if (result.first == 200) {
+            blog(LOG_INFO, "[GameDetector/TrovoAuth] User info fetched successfully.");
             QJsonDocument doc = QJsonDocument::fromJson(result.second.toUtf8());
             this->userId = doc.object()["uid"].toString();
             QString nickName = doc.object()["nick_name"].toString();
@@ -144,6 +160,7 @@ void TrovoAuthManager::fetchUserInfo()
             ConfigManager::get().save(ConfigManager::get().getSettings());
             emit authenticationFinished(true, nickName);
         } else {
+            blog(LOG_ERROR, "[GameDetector/TrovoAuth] Failed to fetch user info. HTTP Code: %ld, Response: %s", result.first, result.second.toStdString().c_str());
             emit authenticationFinished(false, obs_module_text("Auth.Error.GetUserIdFailed"));
         }
     });
@@ -177,7 +194,7 @@ void TrovoAuthManager::searchAndSetCategory(const QString &gameName)
 {
     QString searchTerm = gameName;
     if (gameName == "Just Chatting") {
-        searchTerm = "Chit Chat";
+        searchTerm = "ChitChat";
     }
 
     QJsonObject body;
@@ -231,6 +248,7 @@ QFuture<std::pair<long, QString>> TrovoAuthManager::performPOST(const QString &u
         struct curl_slist *headers = nullptr;
         headers = curl_slist_append(headers, ("Client-ID: " + CLIENT_ID.toStdString()).c_str());
         headers = curl_slist_append(headers, "Content-Type: application/json");
+        headers = curl_slist_append(headers, "Accept: application/json");
         if (!token.isEmpty()) {
             std::string auth = "Authorization: OAuth " + token.toStdString();
             headers = curl_slist_append(headers, auth.c_str());
@@ -259,14 +277,22 @@ QFuture<std::pair<long, QString>> TrovoAuthManager::performGET(const QString &ur
         long http_code = 0;
         std::string response;
         struct curl_slist *headers = nullptr;
-        headers = curl_slist_append(headers, ("Client-ID: " + CLIENT_ID.toStdString()).c_str());
+
+        headers = curl_slist_append(headers, "Accept: application/json");
+        std::string clientIdHeader = "Client-ID: " + CLIENT_ID.toStdString();
+        headers = curl_slist_append(headers, clientIdHeader.c_str());
+
         if (!token.isEmpty()) {
-            std::string auth = "Authorization: OAuth " + token.toStdString();
-            headers = curl_slist_append(headers, auth.c_str());
+            std::string authHeader = "Authorization: OAuth " + token.toStdString();
+            headers = curl_slist_append(headers, authHeader.c_str());
         }
+
         curl_easy_setopt(curl, CURLOPT_URL, url.toStdString().c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, trovo_curl_write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
         CURLcode res = curl_easy_perform(curl);
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
         curl_slist_free_all(headers);

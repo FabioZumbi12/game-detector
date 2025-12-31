@@ -17,6 +17,8 @@
 
 PlatformManager::PlatformManager()
 {
+    lastSetCategoryName = "Just Chatting";
+
     // Inicializa os serviços suportados
     TwitchServiceAdapter *twitch = new TwitchServiceAdapter(this);
     TrovoAuthManager *trovo = new TrovoAuthManager(this);
