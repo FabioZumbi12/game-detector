@@ -1,5 +1,6 @@
 ﻿#include "TwitchAuthManager.h"
 #include "ConfigManager.h"
+#include "NetworkCommon.h"
 
 #include <obs-module.h>
 #include <curl/curl.h>
@@ -12,13 +13,6 @@
 #include <QJsonDocument>
 #include <QUrlQuery>
 #include <QTimer>
-
-static size_t auth_curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-	size_t realsize = size * nmemb;
-	((std::string *)userp)->append((char *)contents, realsize);
-	return realsize;
-}
 
 static const QString SVG_SUCCESS = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24' fill='none' stroke='#4caf50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'></path><polyline points='22 4 12 14.01 9 11.01'></polyline></svg>";
 static const QString SVG_ERROR = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24' fill='none' stroke='#ff5252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'></circle><line x='15' y='9' x2='9' y2='15'></line><line x='9' y='9' x2='15' y2='15'></line></svg>";
@@ -65,12 +59,18 @@ TwitchAuthManager::TwitchAuthManager(QObject *parent) : QObject(parent)
 	connect(server, &QTcpServer::newConnection, this, &TwitchAuthManager::onNewConnection);
 	connect(this, &TwitchAuthManager::authenticationDataNeedsClearing, this, &TwitchAuthManager::clearAuthentication, Qt::QueuedConnection);
 	connect(authTimeoutTimer, &QTimer::timeout, this, &TwitchAuthManager::onAuthTimerTick);
+	threadPool.setMaxThreadCount(4);
 }
 
 TwitchAuthManager::~TwitchAuthManager()
 {
 	if (server->isListening())
 		server->close();
+}
+
+void TwitchAuthManager::shutdown()
+{
+	threadPool.waitForDone();
 }
 
 void TwitchAuthManager::loadToken()
@@ -259,163 +259,22 @@ QString TwitchAuthManager::getUserId()
 
 QFuture<std::pair<long, QString>> TwitchAuthManager::performGET(const QString &url, const QString &token)
 {
-	return QtConcurrent::run([this, url, token]() -> std::pair<long, QString> {
-		CURL *curl = curl_easy_init();
-		if (!curl)
-			return {0, ""};
-
-		long http_code = 0;
-		std::string response;
-		struct curl_slist *headers = nullptr;
-
-		std::string auth = "Authorization: Bearer " + token.toStdString();
-		std::string cid = "Client-ID: " + getClientId().toStdString();
-
-		headers = curl_slist_append(headers, auth.c_str());
-		headers = curl_slist_append(headers, cid.c_str());
-
-		curl_easy_setopt(curl, CURLOPT_URL, url.toStdString().c_str());
-		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, auth_curl_write_callback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-		curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
-
-		CURLcode res = curl_easy_perform(curl);
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-		curl_slist_free_all(headers);
-		curl_easy_cleanup(curl);
-
-		if (res != CURLE_OK) {
-			blog(LOG_ERROR, "[GameDetector/TwitchAuth] cURL error (GET): %s", curl_easy_strerror(res));
-			return {0, ""};
-		}
-
-		if (http_code < 200 || http_code >= 300) {
-			if (http_code == 401) {
-				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in GET request to %s. Initiating reauthentication process.", url.toStdString().c_str());
-				emit authenticationDataNeedsClearing();
-				emit reauthenticationNeeded();
-				return {http_code, ""};
-			} else if (http_code == 429) {
-				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
-			}
-			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in GET request to Twitch API (Status: %ld): %s", http_code, response.c_str());
-		}
- 
-		return {http_code, QString::fromStdString(response)};
+	return RunTaskSafe(&threadPool, "TwitchAuth/performGET", [this, url, token]() -> std::pair<long, QString> {
+		return performGETSync(url, token);
 	});
 }
 
 QFuture<std::pair<long, QString>> TwitchAuthManager::performPATCH(const QString &url, const QJsonObject &body, const QString &token)
 {
-	return QtConcurrent::run([this, url, body, token]() -> std::pair<long, QString> {
-		CURL *curl = curl_easy_init();
-		if (!curl)
-			return {0, ""};
-
-		long http_code = 0;
-		std::string response;
-
-		struct curl_slist *headers = nullptr;
-		std::string auth = "Authorization: Bearer " + token.toStdString();
-		std::string cid = "Client-ID: " + getClientId().toStdString();
-
-		headers = curl_slist_append(headers, auth.c_str());
-		headers = curl_slist_append(headers, cid.c_str());
-		headers = curl_slist_append(headers, "Content-Type: application/json");
-
-		QJsonDocument doc(body);
-		std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
-
-		curl_easy_setopt(curl, CURLOPT_URL, url.toStdString().c_str());
-		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, auth_curl_write_callback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-		curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
-
-		CURLcode res = curl_easy_perform(curl);
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-		curl_slist_free_all(headers);
-		curl_easy_cleanup(curl);
-
-		if (res != CURLE_OK) {
-			blog(LOG_ERROR, "[GameDetector/TwitchAuth] cURL error (PATCH): %s", curl_easy_strerror(res));
-			return {0, ""};
-		}
-
-		if (http_code < 200 || http_code >= 300) {
-			if (http_code == 401) {
-				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in PATCH request to %s. Initiating reauthentication process.", url.toStdString().c_str());
-				emit authenticationDataNeedsClearing();
-				emit reauthenticationNeeded();
-				return {http_code, ""};
-			} else if (http_code == 429) {
-				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
-			}
-			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in PATCH request to Twitch API (Status: %ld): %s", http_code, response.c_str());
-		}
- 
-		return {http_code, QString::fromStdString(response)};
+	return RunTaskSafe(&threadPool, "TwitchAuth/performPATCH", [this, url, body, token]() -> std::pair<long, QString> {
+		return performPATCHSync(url, body, token);
 	});
 }
 
 QFuture<std::pair<long, QString>> TwitchAuthManager::performPOST(const QString &url, const QJsonObject &body, const QString &token)
 {
-	return QtConcurrent::run([this, url, body, token]() -> std::pair<long, QString> {
-		CURL *curl = curl_easy_init();
-		if (!curl)
-			return {0, ""};
-
-		long http_code = 0;
-		std::string response;
-
-		struct curl_slist *headers = nullptr;
-		std::string auth = "Authorization: Bearer " + token.toStdString();
-		std::string cid = "Client-ID: " + getClientId().toStdString();
-
-		headers = curl_slist_append(headers, auth.c_str());
-		headers = curl_slist_append(headers, cid.c_str());
-		headers = curl_slist_append(headers, "Content-Type: application/json");
-
-		QJsonDocument doc(body);
-		std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
-
-		curl_easy_setopt(curl, CURLOPT_URL, url.toStdString().c_str());
-		curl_easy_setopt(curl, CURLOPT_POST, 1L);
-		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, auth_curl_write_callback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-		curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
-
-		CURLcode res = curl_easy_perform(curl);
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-		curl_slist_free_all(headers);
-		curl_easy_cleanup(curl);
-
-		if (res != CURLE_OK) {
-			blog(LOG_ERROR, "[GameDetector/TwitchAuth] cURL error (POST): %s", curl_easy_strerror(res));
-			return {0, ""};
-		}
-
-		if (http_code < 200 || http_code >= 300) {
-			if (http_code == 401) {
-				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in POST request to %s. Initiating reauthentication process.", url.toStdString().c_str());
-				emit authenticationDataNeedsClearing();
-				emit reauthenticationNeeded();
-				return {http_code, ""};
-			} else if (http_code == 429) {
-				blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
-			}
-			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in POST request to Twitch API (Status: %ld): %s", http_code, response.c_str());
-		}
- 
-		return {http_code, QString::fromStdString(response)};
+	return RunTaskSafe(&threadPool, "TwitchAuth/performPOST", [this, url, body, token]() -> std::pair<long, QString> {
+		return performPOSTSync(url, body, token);
 	});
 }
 
@@ -425,9 +284,7 @@ std::pair<QString, QString> TwitchAuthManager::getTokenUserInfo()
 		return {"", ""};
 
 	QString url = "https://api.twitch.tv/helix/users";
-	auto future = performGET(url, accessToken);
-	future.waitForFinished();
-	auto [http_code, json] = future.result();
+	auto [http_code, json] = performGETSync(url, accessToken);
 
 	if (http_code == 200) {
 		QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
@@ -446,11 +303,8 @@ QFuture<QString> TwitchAuthManager::getGameId(const QString &gameName)
 {
 	QString url = "https://api.twitch.tv/helix/games?name=" + QUrl::toPercentEncoding(gameName);
 
-	QFuture<std::pair<long, QString>> future = performGET(url, accessToken);
-
-	return QtConcurrent::run([future]() mutable -> QString {
-		future.waitForFinished();
-		auto [http_code, json] = future.result();
+	return RunTaskSafe(&threadPool, "TwitchAuth/getGameId", [this, url]() mutable -> QString {
+		auto [http_code, json] = performGETSync(url, accessToken);
 
 		if (http_code != 200)
 			return "";
@@ -474,11 +328,9 @@ QFuture<TwitchAuthManager::UpdateResult> TwitchAuthManager::updateChannelCategor
 	QJsonObject body;
 	body["game_id"] = gameId;
 
-	QFuture<std::pair<long, QString>> future = performPATCH(url, body, accessToken);
-
-	return QtConcurrent::run([future]() mutable -> UpdateResult {
-		future.waitForFinished();
-		auto [http_code, json] = future.result();
+	return RunTaskSafe(&threadPool, "TwitchAuth/updateChannelCategory", [this, url, body]() mutable -> UpdateResult {
+		auto [http_code, json] = performPATCHSync(url, body, accessToken);
+		
 		if (http_code == 204) {
 			return UpdateResult::Success;
 		} else if (http_code == 401) {
@@ -492,7 +344,7 @@ QFuture<bool> TwitchAuthManager::sendChatMessage(const QString &broadcasterId, c
 {
 	if (broadcasterId.isEmpty() || senderId.isEmpty() || message.isEmpty()) {
 		blog(LOG_WARNING, "[GameDetector/TwitchAuth] Attempt to send chat message with incomplete data.");
-		QFuture<bool> future = QtConcurrent::run([=]() {
+		QFuture<bool> future = QtConcurrent::run(&threadPool, [=]() {
             return false;  // seu resultado
         });
 		return future;
@@ -505,11 +357,98 @@ QFuture<bool> TwitchAuthManager::sendChatMessage(const QString &broadcasterId, c
 	body["sender_id"] = senderId;
 	body["message"] = message;
 
-	QFuture<std::pair<long, QString>> future = performPOST(url, body, accessToken);
-
-	return QtConcurrent::run([future]() mutable -> bool {
-		future.waitForFinished();
-		auto [http_code, json] = future.result();
+	return RunTaskSafe(&threadPool, "TwitchAuth/sendChatMessage", [this, url, body]() mutable -> bool {
+		auto [http_code, json] = performPOSTSync(url, body, accessToken);
 		return http_code == 200;
 	});
+}
+
+std::pair<long, QString> TwitchAuthManager::performGETSync(const QString &url, const QString &token)
+{
+	struct curl_slist *headers = nullptr;
+
+	std::string auth = "Authorization: Bearer " + token.toStdString();
+	std::string cid = "Client-ID: " + getClientId().toStdString();
+
+	headers = curl_slist_append(headers, auth.c_str());
+	headers = curl_slist_append(headers, cid.c_str());
+	
+	auto [http_code, response] = ExecuteNetworkRequest(url, "GET", headers);
+	curl_slist_free_all(headers);
+
+	if (http_code < 200 || http_code >= 300) {
+		if (http_code == 401) {
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in GET request to %s. Initiating reauthentication process.", url.toStdString().c_str());
+			emit authenticationDataNeedsClearing();
+			emit reauthenticationNeeded();
+			return {http_code, ""};
+		} else if (http_code == 429) {
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
+		}
+		blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in GET request to Twitch API (Status: %ld): %s", http_code, response.toStdString().c_str());
+	}
+
+	return {http_code, response};
+}
+
+std::pair<long, QString> TwitchAuthManager::performPATCHSync(const QString &url, const QJsonObject &body, const QString &token)
+{
+	struct curl_slist *headers = nullptr;
+	std::string auth = "Authorization: Bearer " + token.toStdString();
+	std::string cid = "Client-ID: " + getClientId().toStdString();
+
+	headers = curl_slist_append(headers, auth.c_str());
+	headers = curl_slist_append(headers, cid.c_str());
+	headers = curl_slist_append(headers, "Content-Type: application/json");
+
+	QJsonDocument doc(body);
+	std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
+
+	auto [http_code, response] = ExecuteNetworkRequest(url, "PATCH", headers, json);
+	curl_slist_free_all(headers);
+
+	if (http_code < 200 || http_code >= 300) {
+		if (http_code == 401) {
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in PATCH request to %s. Initiating reauthentication process.", url.toStdString().c_str());
+			emit authenticationDataNeedsClearing();
+			emit reauthenticationNeeded();
+			return {http_code, ""};
+		} else if (http_code == 429) {
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
+		}
+		blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in PATCH request to Twitch API (Status: %ld): %s", http_code, response.toStdString().c_str());
+	}
+
+	return {http_code, response};
+}
+
+std::pair<long, QString> TwitchAuthManager::performPOSTSync(const QString &url, const QJsonObject &body, const QString &token)
+{
+	struct curl_slist *headers = nullptr;
+	std::string auth = "Authorization: Bearer " + token.toStdString();
+	std::string cid = "Client-ID: " + getClientId().toStdString();
+
+	headers = curl_slist_append(headers, auth.c_str());
+	headers = curl_slist_append(headers, cid.c_str());
+	headers = curl_slist_append(headers, "Content-Type: application/json");
+
+	QJsonDocument doc(body);
+	std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
+
+	auto [http_code, response] = ExecuteNetworkRequest(url, "POST", headers, json);
+	curl_slist_free_all(headers);
+
+	if (http_code < 200 || http_code >= 300) {
+		if (http_code == 401) {
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Invalid token (401 Unauthorized) in POST request to %s. Initiating reauthentication process.", url.toStdString().c_str());
+			emit authenticationDataNeedsClearing();
+			emit reauthenticationNeeded();
+			return {http_code, ""};
+		} else if (http_code == 429) {
+			blog(LOG_WARNING, "[GameDetector/TwitchAuth] Twitch API rate limit exceeded (429 Too Many Requests). Please wait a moment and try again.");
+		}
+		blog(LOG_WARNING, "[GameDetector/TwitchAuth] Error in POST request to Twitch API (Status: %ld): %s", http_code, response.toStdString().c_str());
+	}
+
+	return {http_code, response};
 }

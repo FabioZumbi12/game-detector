@@ -50,6 +50,12 @@ PlatformManager::~PlatformManager()
     }
 }
 
+void PlatformManager::shutdown()
+{
+    auto services = findChildren<IPlatformService *>();
+    qDeleteAll(services);
+}
+
 bool PlatformManager::sendChatMessage(const QString &message)
 {
     if (onCooldown) {

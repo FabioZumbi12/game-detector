@@ -7,6 +7,7 @@
 #include <QString>
 #include <QFuture>
 #include <QJsonObject>
+#include <QThreadPool>
 
 class QTcpServer;
 class QTcpSocket;
@@ -17,9 +18,9 @@ class TwitchAuthManager : public QObject {
 
 public:
 	enum UpdateResult {
+		Failed,
 		Success,
-		AuthError,
-		Failed
+		AuthError
 	};
 
 public:
@@ -52,6 +53,7 @@ public slots:
 	void startAuthentication(int mode = -1, int unifiedAuth = -1);
 	void clearAuthentication();
 	void loadToken();
+	void shutdown();
 
 private:
 	TwitchAuthManager(QObject *parent = nullptr);
@@ -61,6 +63,10 @@ private:
 	QFuture<std::pair<long, QString>> performPATCH(const QString &url, const QJsonObject &body, const QString &token);
 	QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body, const QString &token);
 
+	std::pair<long, QString> performGETSync(const QString &url, const QString &token);
+	std::pair<long, QString> performPATCHSync(const QString &url, const QJsonObject &body, const QString &token);
+	std::pair<long, QString> performPOSTSync(const QString &url, const QJsonObject &body, const QString &token);
+
 	QString accessToken;
 	QString userId;
 	bool isAuthenticating = false;
@@ -68,6 +74,7 @@ private:
 	QTcpServer *server = nullptr;
 	QTimer *authTimeoutTimer = nullptr;
 	int authRemainingSeconds = 0;
+	QThreadPool threadPool;
 
 	static constexpr const char *CLIENT_ID = "wl4mx2l4sgmdvpwoek6pjronpor9en";
 	static constexpr const char *REDIRECT_URI = "http://localhost:30000/";

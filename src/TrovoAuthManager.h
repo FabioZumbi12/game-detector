@@ -4,6 +4,7 @@
 #include <QTcpServer>
 #include <QFuture>
 #include <QJsonObject>
+#include <QThreadPool>
 #include <QTimer>
 
 class TrovoAuthManager : public IPlatformService {
@@ -32,8 +33,7 @@ private:
 
     QTimer *authTimeoutTimer = nullptr;
     int authRemainingSeconds = 0;
-
-    QFuture<void> pendingTask;
+    QThreadPool threadPool;
 
     const QString AUTH_API_URL = "https://trovo-obs.areaz12server.net.br";
     const QString CLIENT_ID = "b07641be5083b975423de98ee83e8e0a";
@@ -45,4 +45,7 @@ private:
 
     QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body, const QString &token);
     QFuture<std::pair<long, QString>> performGET(const QString &url, const QString &token);
+
+    std::pair<long, QString> performPOSTSync(const QString &url, const QJsonObject &body, const QString &token);
+    std::pair<long, QString> performGETSync(const QString &url, const QString &token);
 };

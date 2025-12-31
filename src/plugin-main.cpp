@@ -147,6 +147,8 @@ void obs_module_unload(void)
 	obs_hotkey_unregister(g_rescan_games_hotkey_id);
 
 	GameDetector::get().stopScanning();
+	PlatformManager::get().shutdown();
+	TwitchAuthManager::get().shutdown();
 	ConfigManager::get().save(ConfigManager::get().getSettings());
 
 	blog(LOG_INFO, "[GameDetector] Plugin unloaded.");

@@ -1,5 +1,6 @@
 #include "TrovoAuthManager.h"
 #include "ConfigManager.h"
+#include "NetworkCommon.h"
 #include <obs-module.h>
 #include <curl/curl.h>
 #include <QtConcurrent/QtConcurrent>
@@ -12,13 +13,6 @@
 #include <QJsonArray>
 #include <QTimer>
 
-static size_t trovo_curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-    size_t realsize = size * nmemb;
-    ((std::string *)userp)->append((char *)contents, realsize);
-    return realsize;
-}
-
 TrovoAuthManager::TrovoAuthManager(QObject *parent) : IPlatformService(parent)
 {
     server = new QTcpServer(this);
@@ -26,12 +20,13 @@ TrovoAuthManager::TrovoAuthManager(QObject *parent) : IPlatformService(parent)
     connect(server, &QTcpServer::newConnection, this, &TrovoAuthManager::onNewConnection);
     connect(authTimeoutTimer, &QTimer::timeout, this, &TrovoAuthManager::onAuthTimerTick);
     loadToken();
+    threadPool.setMaxThreadCount(4);
 }
 
 TrovoAuthManager::~TrovoAuthManager()
 {
     if (server->isListening()) server->close();
-    pendingTask.waitForFinished();
+    threadPool.waitForDone();
 }
 
 void TrovoAuthManager::loadToken()
@@ -145,9 +140,9 @@ void TrovoAuthManager::onNewConnection()
 
 void TrovoAuthManager::fetchUserInfo()
 {
-    auto future = performGET("https://open-api.trovo.live/openplatform/validate", accessToken);
-    pendingTask = QtConcurrent::run([this, future]() {
-        auto result = future.result();
+    (void)RunTaskSafe(&threadPool, "TrovoAuth/fetchUserInfo", [this]() {
+        auto result = performGETSync("https://open-api.trovo.live/openplatform/validate", accessToken);
+        
         if (result.first == 200) {
             blog(LOG_INFO, "[GameDetector/TrovoAuth] User info fetched successfully.");
             QJsonDocument doc = QJsonDocument::fromJson(result.second.toUtf8());
@@ -200,10 +195,9 @@ void TrovoAuthManager::searchAndSetCategory(const QString &gameName)
     QJsonObject body;
     body["query"] = searchTerm;
     body["limit"] = 1;
-    auto future = performPOST("https://open-api.trovo.live/openplatform/searchcategory", body, accessToken);
 
-    pendingTask = QtConcurrent::run([this, future, gameName]() {
-        auto result = future.result();
+    (void)RunTaskSafe(&threadPool, "TrovoAuth/searchAndSetCategory", [this, body, gameName]() {
+        auto result = performPOSTSync("https://open-api.trovo.live/openplatform/searchcategory", body, accessToken);
         QString categoryId;
         if (result.first == 200) {
             QJsonDocument doc = QJsonDocument::fromJson(result.second.toUtf8());
@@ -219,9 +213,9 @@ void TrovoAuthManager::searchAndSetCategory(const QString &gameName)
         QJsonObject updateBody;
         updateBody["channel_id"] = this->userId;
         updateBody["category_id"] = categoryId;
-        auto updateFuture = performPOST("https://open-api.trovo.live/openplatform/channels/update", updateBody, accessToken);
+        auto updateResult = performPOSTSync("https://open-api.trovo.live/openplatform/channels/update", updateBody, accessToken);
         
-        if (updateFuture.result().first == 200) {
+        if (updateResult.first == 200) {
             emit categoryUpdateFinished(true, gameName, "");
         } else {
             emit categoryUpdateFinished(false, gameName, obs_module_text("Trovo.Error.UpdateFailed"));
@@ -235,68 +229,65 @@ void TrovoAuthManager::sendChatMessage(const QString &message)
     QJsonObject body;
     body["content"] = message;
     body["channel_id"] = userId;
-    performPOST("https://open-api.trovo.live/openplatform/chat/send", body, accessToken);
+    (void)performPOST("https://open-api.trovo.live/openplatform/chat/send", body, accessToken);
 }
 
 QFuture<std::pair<long, QString>> TrovoAuthManager::performPOST(const QString &url, const QJsonObject &body, const QString &token)
 {
-    return QtConcurrent::run([this, url, body, token]() -> std::pair<long, QString> {
-        CURL *curl = curl_easy_init();
-        if (!curl) return {0, ""};
-        long http_code = 0;
-        std::string response;
-        struct curl_slist *headers = nullptr;
-        headers = curl_slist_append(headers, ("Client-ID: " + CLIENT_ID.toStdString()).c_str());
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        headers = curl_slist_append(headers, "Accept: application/json");
-        if (!token.isEmpty()) {
-            std::string auth = "Authorization: OAuth " + token.toStdString();
-            headers = curl_slist_append(headers, auth.c_str());
-        }
-        QJsonDocument doc(body);
-        std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
-        curl_easy_setopt(curl, CURLOPT_URL, url.toStdString().c_str());
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, trovo_curl_write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        CURLcode res = curl_easy_perform(curl);
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-        return {http_code, QString::fromStdString(response)};
+    return RunTaskSafe(&threadPool, "TrovoAuth/performPOST", [this, url, body, token]() -> std::pair<long, QString> {
+        return performPOSTSync(url, body, token);
     });
 }
 
 QFuture<std::pair<long, QString>> TrovoAuthManager::performGET(const QString &url, const QString &token)
 {
-    return QtConcurrent::run([this, url, token]() -> std::pair<long, QString> {
-        CURL *curl = curl_easy_init();
-        if (!curl) return {0, ""};
-        long http_code = 0;
-        std::string response;
-        struct curl_slist *headers = nullptr;
-
-        headers = curl_slist_append(headers, "Accept: application/json");
-        std::string clientIdHeader = "Client-ID: " + CLIENT_ID.toStdString();
-        headers = curl_slist_append(headers, clientIdHeader.c_str());
-
-        if (!token.isEmpty()) {
-            std::string authHeader = "Authorization: OAuth " + token.toStdString();
-            headers = curl_slist_append(headers, authHeader.c_str());
-        }
-
-        curl_easy_setopt(curl, CURLOPT_URL, url.toStdString().c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, trovo_curl_write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-        CURLcode res = curl_easy_perform(curl);
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-        return {http_code, QString::fromStdString(response)};
+    return RunTaskSafe(&threadPool, "TrovoAuth/performGET", [this, url, token]() -> std::pair<long, QString> {
+        return performGETSync(url, token);
     });
+}
+
+std::pair<long, QString> TrovoAuthManager::performPOSTSync(const QString &url, const QJsonObject &body, const QString &token)
+{
+    struct curl_slist *headers = nullptr;
+    headers = curl_slist_append(headers, ("Client-ID: " + CLIENT_ID.toStdString()).c_str());
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "Accept: application/json");
+    if (!token.isEmpty()) {
+        std::string auth = "Authorization: OAuth " + token.toStdString();
+        headers = curl_slist_append(headers, auth.c_str());
+    }
+    QJsonDocument doc(body);
+    std::string json = doc.toJson(QJsonDocument::Compact).toStdString();
+
+    auto [http_code, response] = ExecuteNetworkRequest(url, "POST", headers, json);
+    curl_slist_free_all(headers);
+
+    if (http_code < 200 || http_code >= 300) {
+        blog(LOG_WARNING, "[GameDetector/TrovoAuth] Error in POST request to Trovo API (Status: %ld): %s", http_code, response.toStdString().c_str());
+    }
+
+    return {http_code, response};
+}
+
+std::pair<long, QString> TrovoAuthManager::performGETSync(const QString &url, const QString &token)
+{
+    struct curl_slist *headers = nullptr;
+
+    headers = curl_slist_append(headers, "Accept: application/json");
+    std::string clientIdHeader = "Client-ID: " + CLIENT_ID.toStdString();
+    headers = curl_slist_append(headers, clientIdHeader.c_str());
+
+    if (!token.isEmpty()) {
+        std::string authHeader = "Authorization: OAuth " + token.toStdString();
+        headers = curl_slist_append(headers, authHeader.c_str());
+    }
+
+    auto [http_code, response] = ExecuteNetworkRequest(url, "GET", headers, "", true);
+    curl_slist_free_all(headers);
+
+    if (http_code < 200 || http_code >= 300) {
+        blog(LOG_WARNING, "[GameDetector/TrovoAuth] Error in GET request to Trovo API (Status: %ld): %s", http_code, response.toStdString().c_str());
+    }
+
+    return {http_code, response};
 }
