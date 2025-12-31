@@ -34,6 +34,7 @@ void TrovoAuthManager::loadToken()
     auto settings = ConfigManager::get().getSettings();
     accessToken = ConfigManager::get().getTrovoToken();
     userId = ConfigManager::get().getTrovoUserId();
+    refreshToken = obs_data_get_string(settings, "trovo_refresh_token");
 }
 
 bool TrovoAuthManager::isAuthenticated() const
@@ -96,14 +97,11 @@ void TrovoAuthManager::onNewConnection()
 
     connect(clientSocket, &QTcpSocket::readyRead, this, [this, clientSocket]() {
         QString request = clientSocket->readAll();
-        blog(LOG_INFO, "[GameDetector/TrovoAuth] Request received: %s", request.toStdString().c_str());
-
         QStringList reqLines = request.split("\r\n");
         if (reqLines.isEmpty()) return;
 
         QString firstLine = reqLines.first();
         
-        // Handle CORS Preflight
         if (firstLine.startsWith("OPTIONS")) {
             clientSocket->write("HTTP/1.1 204 No Content\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, OPTIONS\r\nAccess-Control-Allow-Headers: *\r\n\r\n");
             clientSocket->flush();
@@ -115,6 +113,7 @@ void TrovoAuthManager::onNewConnection()
         QUrl url(path);
         QUrlQuery query(url.query());
         QString token = query.queryItemValue("token");
+        QString refresh = query.queryItemValue("refresh_token");
 
         if (!token.isEmpty()) {
             blog(LOG_INFO, "[GameDetector/TrovoAuth] Token extracted. Fetching user info...");
@@ -128,6 +127,7 @@ void TrovoAuthManager::onNewConnection()
             server->close();
             isAuthenticating = false;
             this->accessToken = token;
+            this->refreshToken = refresh;
             fetchUserInfo();
         } else {
             blog(LOG_WARNING, "[GameDetector/TrovoAuth] No token found in request: %s", path.toStdString().c_str());
@@ -152,6 +152,7 @@ void TrovoAuthManager::fetchUserInfo()
             ConfigManager::get().setTrovoToken(accessToken);
             ConfigManager::get().setTrovoUserId(userId);
             ConfigManager::get().setTrovoChannelLogin(nickName);
+            obs_data_set_string(ConfigManager::get().getSettings(), "trovo_refresh_token", refreshToken.toStdString().c_str());
             ConfigManager::get().save(ConfigManager::get().getSettings());
             emit authenticationFinished(true, nickName);
         } else {
@@ -161,11 +162,42 @@ void TrovoAuthManager::fetchUserInfo()
     });
 }
 
+bool TrovoAuthManager::refreshAccessToken()
+{
+    if (refreshToken.isEmpty()) return false;
+
+    blog(LOG_INFO, "[GameDetector/TrovoAuth] Refreshing access token...");
+
+    QJsonObject body;
+    body["grant_type"] = "refresh_token";    
+    body["refresh_token"] = refreshToken;
+
+    auto [http_code, response] = performPOSTSync(AUTH_API_URL, body, "");
+
+    if (http_code == 200) {
+        QJsonDocument doc = QJsonDocument::fromJson(response.toUtf8());
+        QJsonObject json = doc.object();
+        
+        this->accessToken = json["access_token"].toString();
+        this->refreshToken = json["refresh_token"].toString();
+
+        ConfigManager::get().setTrovoToken(this->accessToken);
+        obs_data_set_string(ConfigManager::get().getSettings(), "trovo_refresh_token", this->refreshToken.toStdString().c_str());
+        ConfigManager::get().save(ConfigManager::get().getSettings());
+        
+        blog(LOG_INFO, "[GameDetector/TrovoAuth] Token refreshed successfully.");
+        return true;
+    }
+
+    blog(LOG_WARNING, "[GameDetector/TrovoAuth] Failed to refresh token. HTTP: %ld Response: %s", http_code, response.toStdString().c_str());
+    return false;
+}
+
 void TrovoAuthManager::updateCategory(const QString &gameName)
 {
     int actionMode = ConfigManager::get().getActionMode();
 
-    if (actionMode == 0) { // Chat Command
+    if (actionMode == 0) {
         QString cmd;
         if (gameName == "Just Chatting") {
             cmd = ConfigManager::get().getNoGameCommand();
@@ -249,9 +281,10 @@ QFuture<std::pair<long, QString>> TrovoAuthManager::performGET(const QString &ur
 std::pair<long, QString> TrovoAuthManager::performPOSTSync(const QString &url, const QJsonObject &body, const QString &token)
 {
     struct curl_slist *headers = nullptr;
-    headers = curl_slist_append(headers, ("Client-ID: " + CLIENT_ID.toStdString()).c_str());
+    headers = curl_slist_append(headers, ("client-id: " + CLIENT_ID.toStdString()).c_str());
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "Accept: application/json");
+
     if (!token.isEmpty()) {
         std::string auth = "Authorization: OAuth " + token.toStdString();
         headers = curl_slist_append(headers, auth.c_str());
@@ -264,6 +297,13 @@ std::pair<long, QString> TrovoAuthManager::performPOSTSync(const QString &url, c
 
     if (http_code < 200 || http_code >= 300) {
         blog(LOG_WARNING, "[GameDetector/TrovoAuth] Error in POST request to Trovo API (Status: %ld): %s", http_code, response.toStdString().c_str());
+        
+        if (http_code == 401 && !refreshToken.isEmpty()) {
+            if (refreshAccessToken()) {
+                blog(LOG_INFO, "[GameDetector/TrovoAuth] Retrying POST request with new token...");
+                return performPOSTSync(url, body, accessToken);
+            }
+        }
     }
 
     return {http_code, response};
@@ -274,7 +314,7 @@ std::pair<long, QString> TrovoAuthManager::performGETSync(const QString &url, co
     struct curl_slist *headers = nullptr;
 
     headers = curl_slist_append(headers, "Accept: application/json");
-    std::string clientIdHeader = "Client-ID: " + CLIENT_ID.toStdString();
+    std::string clientIdHeader = "client-id: " + CLIENT_ID.toStdString();
     headers = curl_slist_append(headers, clientIdHeader.c_str());
 
     if (!token.isEmpty()) {
@@ -287,6 +327,13 @@ std::pair<long, QString> TrovoAuthManager::performGETSync(const QString &url, co
 
     if (http_code < 200 || http_code >= 300) {
         blog(LOG_WARNING, "[GameDetector/TrovoAuth] Error in GET request to Trovo API (Status: %ld): %s", http_code, response.toStdString().c_str());
+
+        if (http_code == 401 && !refreshToken.isEmpty()) {
+            if (refreshAccessToken()) {
+                blog(LOG_INFO, "[GameDetector/TrovoAuth] Retrying GET request with new token...");
+                return performGETSync(url, accessToken);
+            }
+        }
     }
 
     return {http_code, response};

@@ -42,7 +42,6 @@ void TwitchServiceAdapter::updateCategory(const QString &gameName)
 {
     int actionMode = ConfigManager::get().getActionMode();
     
-    // Modo 0: Comando de Chat
     if (actionMode == 0) {
         QString cmd;
         if (gameName == "Just Chatting") {
@@ -52,12 +51,10 @@ void TwitchServiceAdapter::updateCategory(const QString &gameName)
             cmd.replace("{game}", gameName);
         }
         if (!cmd.isEmpty()) sendChatMessage(cmd);
-        // No modo chat, assumimos sucesso imediato para fins de UI, ou esperamos o chat (complexo)
         emit categoryUpdateFinished(true, gameName, "Command sent");
         return;
     }
 
-    // Modo 1: API
     if (!isAuthenticated()) {
         emit categoryUpdateFinished(false, gameName, obs_module_text("Twitch.Error.NotAuthenticated"));
         return;

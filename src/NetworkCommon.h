@@ -7,8 +7,8 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QThreadPool>
 #include <exception>
+#include <utility>
 
-// Callback para escrita de dados do cURL (compartilhado)
 static size_t auth_curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     size_t realsize = size * nmemb;
@@ -16,7 +16,6 @@ static size_t auth_curl_write_callback(void *contents, size_t size, size_t nmemb
     return realsize;
 }
 
-// Helper para executar requisições cURL e reduzir boilerplate
 inline std::pair<long, QString> ExecuteNetworkRequest(const QString &url, const QString &method, struct curl_slist *headers, const std::string &body = "", bool verbose = false)
 {
     CURL *curl = curl_easy_init();
@@ -56,12 +55,11 @@ inline std::pair<long, QString> ExecuteNetworkRequest(const QString &url, const 
     return {http_code, QString::fromStdString(response)};
 }
 
-// Helper para executar tarefas assíncronas com tratamento de exceção
 template <typename Func>
 auto RunTaskSafe(QThreadPool *pool, const char *context, Func &&func) -> QFuture<decltype(func())>
 {
     using ReturnType = decltype(func());
-    return QtConcurrent::run(pool, [func = std::forward<Func>(func), context]() -> ReturnType {
+    return QtConcurrent::run(pool, [func = std::forward<Func>(func), context]() mutable -> ReturnType {
         try {
             return func();
         } catch (const std::exception &e) {

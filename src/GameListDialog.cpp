@@ -236,12 +236,10 @@ void GameListDialog::onToggleAllClicked()
 		return;
 	}
 
-	// Determina o novo estado com base no primeiro item
 	QWidget *firstCellWidget = manualGamesTable->cellWidget(0, 0);
 	QCheckBox *firstCheckbox = firstCellWidget ? firstCellWidget->findChild<QCheckBox *>() : nullptr;
 	bool newState = firstCheckbox ? !firstCheckbox->isChecked() : true;
 
-	// Aplica o novo estado a todos os checkboxes
 	for (int i = 0; i < rowCount; ++i) {
 		QWidget *cellWidget = manualGamesTable->cellWidget(i, 0);
 		QCheckBox *checkbox = cellWidget ? cellWidget->findChild<QCheckBox *>() : nullptr;
@@ -263,7 +261,7 @@ void GameListDialog::onAutomaticScanFinished(const QList<std::tuple<QString, QSt
 		QString exePath = std::get<2>(gameTuple);
 
 		if (existingPaths.contains(exePath)) {
-			continue; // Pula se o jogo já estiver na lista
+			continue;
 		}
 
 		int newRow = manualGamesTable->rowCount();

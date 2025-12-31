@@ -87,7 +87,6 @@ void TwitchAuthManager::startAuthentication(int mode, int unifiedAuth)
 		return;
 	}
 
-	// Garante que o servidor esteja fechado antes de tentar abrir
 	if (server->isListening()) server->close();
 
 	if (!server->listen(QHostAddress::LocalHost, 30000)) {
@@ -111,10 +110,10 @@ void TwitchAuthManager::startAuthentication(int mode, int unifiedAuth)
 	if (useUnifiedAuth) {
 		blog(LOG_INFO, "[GameDetector/TwitchAuth] Starting unified authentication.");
 		query.addQueryItem("scope", "user:write:chat channel:manage:broadcast");
-	} else if (actionMode == 0) { // Modo Comando de Chat
+	} else if (actionMode == 0) {
 		blog(LOG_INFO, "[GameDetector/TwitchAuth] Starting authentication in mode: Chat Command");
 		query.addQueryItem("scope", "user:write:chat");
-	} else { // Modo API
+	} else {
 		blog(LOG_INFO, "[GameDetector/TwitchAuth] Starting authentication in mode: API");
 		query.addQueryItem("scope", "channel:manage:broadcast");
 	}
@@ -212,7 +211,7 @@ void TwitchAuthManager::onNewConnection()
 			} else {
 				obs_data_set_string(settings, "twitch_access_token", "");
 				obs_data_set_string(settings, "twitch_user_id", "");
-				clearAuthentication(); // Limpa os dados se a obtenção do usuário falhar
+				clearAuthentication();
 				emit authenticationFinished(false, obs_module_text("Auth.Error.GetUserIdFailed"));
 			}
  
@@ -345,7 +344,7 @@ QFuture<bool> TwitchAuthManager::sendChatMessage(const QString &broadcasterId, c
 	if (broadcasterId.isEmpty() || senderId.isEmpty() || message.isEmpty()) {
 		blog(LOG_WARNING, "[GameDetector/TwitchAuth] Attempt to send chat message with incomplete data.");
 		QFuture<bool> future = QtConcurrent::run(&threadPool, [=]() {
-            return false;  // seu resultado
+            return false;
         });
 		return future;
 	}

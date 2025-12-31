@@ -14,7 +14,7 @@ public:
     explicit TrovoAuthManager(QObject *parent = nullptr);
     ~TrovoAuthManager();
 
-    void startAuthentication(int mode = -1, int unifiedAuth = -1); // Chamado pela UI se necessário
+    void startAuthentication(int mode = -1, int unifiedAuth = -1);
     bool isAuthenticated() const override;
     void updateCategory(const QString &gameName) override;
     void sendChatMessage(const QString &message) override;
@@ -28,6 +28,7 @@ signals:
 private:
     QTcpServer *server;
     QString accessToken;
+    QString refreshToken;
     QString userId;
     bool isAuthenticating = false;
 
@@ -42,6 +43,7 @@ private:
     void onAuthTimerTick();
     void fetchUserInfo();
     void searchAndSetCategory(const QString &gameName);
+    bool refreshAccessToken();
 
     QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body, const QString &token);
     QFuture<std::pair<long, QString>> performGET(const QString &url, const QString &token);

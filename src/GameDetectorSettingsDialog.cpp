@@ -285,7 +285,6 @@ void GameDetectorSettingsDialog::rescanGames()
 
 void GameDetectorSettingsDialog::disconectOnChangeComboBox(int index)
 {
-	// Se as permissões unificadas estiverem ativas, não precisa desconectar ao mudar o modo.
 	if (unifiedAuthCheckbox->isChecked()) {
 		updateActionModeUI(index);
 		return;
@@ -356,7 +355,7 @@ void GameDetectorSettingsDialog::onTrovoDisconnectClicked()
 	ConfigManager::get().save(settings);
 	
 	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager*>();
-	if (trovoManager) trovoManager->loadToken(); // Reload to clear internal state
+	if (trovoManager) trovoManager->loadToken();
 	
 	onTrovoAuthenticationFinished(false, "");
 }

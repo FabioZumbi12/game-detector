@@ -40,9 +40,9 @@ public:
 	QFuture<bool> sendChatMessage(const QString &broadcasterId, const QString &senderId, const QString &message);
 
 signals:
-	void authenticationFinished(bool success, const QString &info); // Sinal emitido quando o fluxo de autenticação via navegador termina
-	void reauthenticationNeeded();                               // Sinal emitido quando um token inválido é detectado em uma chamada de API
-	void authenticationDataNeedsClearing();                      // Sinal para limpar os dados de autenticação de forma segura entre threads
+	void authenticationFinished(bool success, const QString &info);
+	void reauthenticationNeeded();
+	void authenticationDataNeedsClearing();
 	void authenticationTimerTick(int remainingSeconds);
 
 private slots:

@@ -1,4 +1,3 @@
-// d:\ProjetosOBS\OBSGameDetector\src\PlatformManager.h
 #ifndef PLATFORMMANAGER_H
 #define PLATFORMMANAGER_H
 
@@ -38,7 +37,6 @@ private:
 
     QString lastSetCategoryName;
     
-    // Mantidos para compatibilidade interna, embora a lógica principal esteja nos Adapters agora
     QFutureWatcher<QString> *gameIdWatcher;
     QFutureWatcher<bool> *chatMessageWatcher;
     QFutureWatcher<void *> *categoryUpdateWatcher;

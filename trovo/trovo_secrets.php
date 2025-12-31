@@ -1,5 +1,4 @@
 <?php
-// Preencha com suas credenciais da Trovo
 $TROVO_CLIENT_ID = 'SEU_CLIENT_ID_DA_TROVO';
 $TROVO_CLIENT_SECRET = 'SEU_CLIENT_SECRET_DA_TROVO';
 $TROVO_REDIRECT_URI = 'http://localhost:31000/';

@@ -49,15 +49,13 @@ GameDetector::GameDetector(QObject *parent) : QObject(parent)
 
 void GameDetector::startScanning()
 {
-	blog(LOG_INFO, "[GameDetector] Starting detection via process scanning.");
 	startProcessMonitoring();
 }
 
 void GameDetector::startProcessMonitoring()
 {
 	if (!scanTimer->isActive()) {
-		blog(LOG_INFO, "[GameDetector] Starting process monitoring.");
-		scanTimer->start(5000); // Verifica a cada 5 segundos
+		scanTimer->start(5000);
 	}
 }
 
@@ -132,8 +130,8 @@ void GameDetector::onPeriodicScanTriggered()
 	*conn = connect(this, &GameDetector::automaticScanFinished,
 			[this, conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
 				this->mergeAndSaveGames(foundGames);
-				this->loadGamesFromConfig(); // Recarrega a lista para o monitoramento
-				QObject::disconnect(*conn);  // Auto-desconexão
+				this->loadGamesFromConfig();
+				QObject::disconnect(*conn);
 			});
 }
 
@@ -145,7 +143,6 @@ void GameDetector::stopScanning()
 		gameDbWatcher->waitForFinished();
 	}
 	if (scanTimer->isActive()) {
-		blog(LOG_INFO, "[GameDetector] Stopping process scanning.");
 		scanTimer->stop();
 	}
 	if (periodicScanTimer->isActive()) {
@@ -402,7 +399,7 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 			gogSettings.beginGroup(gameId);
 
 			QString friendlyName = gogSettings.value("gameName").toString();
-			QString exePath = gogSettings.value("exe").toString(); // GOG nos dá o caminho completo!
+			QString exePath = gogSettings.value("exe").toString();
 			QString exeName = QFileInfo(exePath).fileName();
 
 			gogSettings.endGroup();

@@ -1,4 +1,4 @@
-﻿#include "ConfigManager.h"
+﻿﻿#include "ConfigManager.h"
 #include <obs-data.h>
 #include <obs-module.h>
 #include <QFileInfo>
@@ -20,7 +20,6 @@ void ConfigManager::load()
 		blog(LOG_INFO, "[GameDetector] No config found. Creating new one...");
 		settings = obs_data_create();
 
-		// Defaults
 		obs_data_set_string(settings, COMMAND_KEY, "!setgame {game}");
 		obs_data_set_string(settings, COMMAND_NO_GAME_KEY, "!setgame just chatting");
 		obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);

@@ -27,7 +27,6 @@
 GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 {
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
-	// mainLayout->setContentsMargins(5, 5, 5, 5);
 	this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
 	detectedGameName = "Just Chatting";
@@ -41,7 +40,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	autoExecuteCheckbox = new QCheckBox(obs_module_text("Dock.AutoExecute"));
 	executionLayout->addRow(autoExecuteCheckbox);
 
-	// Layout horizontal para os botões de ação
 	QHBoxLayout *buttonsLayout = new QHBoxLayout();
 	executeCommandButton = new QPushButton(obs_module_text("Dock.SetGame"));
 	executeCommandButton->setFixedHeight(executeCommandButton->sizeHint().height());
@@ -212,7 +210,6 @@ void GameDetectorDock::checkWarningsAndStatus()
 void GameDetectorDock::restoreStatusLabel()
 {
 	if (cooldownUpdateTimer->isActive()) {
-		// Se o timer já estiver ativo, não faz nada para não interromper a contagem
 	} else if (PlatformManager::get().isOnCooldown()) {
 		cooldownUpdateTimer->start(1000);
 	}
@@ -248,7 +245,7 @@ void GameDetectorDock::onAuthenticationRequired()
 
 void GameDetectorDock::onCooldownStarted(int seconds)
 {
-	GameDetector::get().stopScanning(); // Pausa a detecção de jogos
+	GameDetector::get().stopScanning();
 	cooldownUpdateTimer->setProperty("remaining", seconds);
 	updateCooldownLabel();
 	cooldownUpdateTimer->start(1000);

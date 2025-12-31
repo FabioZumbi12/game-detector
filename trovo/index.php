@@ -1,5 +1,4 @@
 <?php
-// trovo/index.php
 
 if (file_exists(__DIR__ . '/../trovo_secrets.php')) {
     include __DIR__ . '/../trovo_secrets.php';
@@ -9,7 +8,6 @@ $CLIENT_ID = $TROVO_CLIENT_ID ?? getenv('TROVO_CLIENT_ID');
 $CLIENT_SECRET = $TROVO_CLIENT_SECRET ?? getenv('TROVO_CLIENT_SECRET');
 $REDIRECT_URI = $TROVO_REDIRECT_URI ?? getenv('TROVO_REDIRECT_URI');
 
-// Detect Language
 $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'en', 0, 2);
 $locale = ($lang === 'pt') ? 'pt' : 'en';
 
@@ -121,7 +119,6 @@ function renderHtml($title, $bodyContent, $script = '') {
     ";
 }
 
-// Check config
 if ($CLIENT_ID === 'SEU_CLIENT_ID_DA_TROVO' || empty($CLIENT_ID)) {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         echo renderHtml($t['config_error'], "<div class='icon-box'>{$svg_error}</div><div><h1 style='color: #ff5252'>{$t['config_error']}</h1><p>{$t['config_missing']}</p></div>");
@@ -133,12 +130,43 @@ if ($CLIENT_ID === 'SEU_CLIENT_ID_DA_TROVO' || empty($CLIENT_ID)) {
     }
 }
 
-// Handle GET request (Landing Page)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (isset($input['grant_type']) && $input['grant_type'] === 'refresh_token' && isset($input['refresh_token'])) {
+        header('Content-Type: application/json');
+
+        $url = 'https://open-api.trovo.live/openplatform/refreshtoken';
+        $data = [
+            'client_secret' => $CLIENT_SECRET,
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $input['refresh_token']
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'client-id: ' . $CLIENT_ID
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        http_response_code($http_code);
+        echo $response;
+        exit;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['code'])) {
         $code = htmlspecialchars($_GET['code']);
         
-        // Troca o código pelo token imediatamente
         $url = 'https://open-api.trovo.live/openplatform/exchangetoken';
         $data = [
             'client_secret' => $CLIENT_SECRET,
@@ -165,10 +193,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         if ($http_code === 200 && isset($json['access_token'])) {
             $token = $json['access_token'];
+            $refresh = $json['refresh_token'] ?? '';
             $jsToken = json_encode($token);
+            $jsRefresh = json_encode($refresh);
             $script = "
                 const token = {$jsToken};
-                fetch('http://localhost:31000/?token=' + token)
+                const refresh = {$jsRefresh};
+                fetch('http://localhost:31000/?token=' + token + '&refresh_token=' + refresh)
                     .then(r => {
                         document.getElementById('status').innerText = '{$t['auth_success_msg']}';
                         setTimeout(() => window.close(), 3000);
