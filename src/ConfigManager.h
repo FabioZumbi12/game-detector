@@ -9,13 +9,16 @@ class ConfigManager : public QObject {
 	Q_OBJECT
 
 private:
-	static constexpr const char *TOKEN_KEY = "twitch_access_token";
-	static constexpr const char *REFRESH_TOKEN_KEY = "twitch_refresh_token";
-	static constexpr const char *USER_ID_KEY = "twitch_user_id";
+	static constexpr const char *TWITCH_TOKEN_KEY = "twitch_access_token";
+	static constexpr const char *TWITCH_REFRESH_TOKEN_KEY = "twitch_refresh_token";
+	static constexpr const char *TWITCH_USER_ID_KEY = "twitch_user_id";
+	static constexpr const char *TROVO_TOKEN_KEY = "trovo_access_token";
+	static constexpr const char *TROVO_USER_ID_KEY = "trovo_user_id";
+	static constexpr const char *TROVO_CHANNEL_LOGIN_KEY = "trovo_channel_login";
 	static constexpr const char *COMMAND_KEY = "twitch_command_message";
 	static constexpr const char *COMMAND_NO_GAME_KEY = "twitch_command_no_game";
 	static constexpr const char *EXECUTE_AUTOMATICALLY_KEY = "execute_automatically";
-	static constexpr const char *TWITCH_ACTION_MODE_KEY = "twitch_action_mode";
+	static constexpr const char *ACTION_MODE_KEY = "twitch_action_mode";
 	static constexpr const char *TWITCH_UNIFIED_AUTH_KEY = "twitch_unified_auth";
 	static constexpr const char *TWITCH_CHANNEL_LOGIN_KEY = "twitch_channel_login";
 
@@ -35,14 +38,17 @@ public:
 	obs_data_t *getSettings() const;
 	obs_data_array_t *getHotkeyData(const char *key) const;
 	void setHotkeyData(const char *key, obs_data_array_t *hotkeyArray);
-	QString getToken() const;
-	QString getRefreshToken() const;
-	QString getUserId() const;
+	QString getTwitchToken() const;
+	QString getTwitchRefreshToken() const;
+	QString getTwitchUserId() const;
+	QString getTrovoToken() const;
+	QString getTrovoUserId() const;
+	QString getTrovoChannelLogin() const;
 	QString getCommand() const;
 	obs_data_array_t *getManualGames() const;
 	QString getNoGameCommand() const;
 	bool getExecuteAutomatically() const;
-	int getTwitchActionMode() const;
+	int getActionMode() const;
 	QString getTwitchChannelLogin() const;
 	bool getUnifiedAuth() const;
 	bool getScanSteam() const;
@@ -53,11 +59,14 @@ public:
 	bool getScanPeriodically() const;
 	int getScanPeriodicallyInterval() const;
 
-	void setToken(const QString &value);
-	void setRefreshToken(const QString &value);
-	void setUserId(const QString &value);
+	void setTwitchToken(const QString &value);
+	void setTwitchRefreshToken(const QString &value);
+	void setTwitchUserId(const QString &value);
+	void setTrovoToken(const QString &value);
+	void setTrovoUserId(const QString &value);
+	void setTrovoChannelLogin(const QString &value);
 	void setTwitchChannelLogin(const QString &value);
-	int getTwitchActionDelay() const;
+	int getActionDelay() const;
 
 
 	static constexpr const char *SCAN_STEAM_KEY = "scan_steam";
@@ -68,7 +77,7 @@ public:
 	static constexpr const char *SCAN_ON_STARTUP_KEY = "scan_on_startup";
 	static constexpr const char *SCAN_PERIODICALLY_KEY = "scan_periodically";
 	static constexpr const char *SCAN_PERIODICALLY_INTERVAL_KEY = "scan_periodically_interval";
-	static constexpr const char *TWITCH_ACTION_DELAY_KEY = "twitch_action_delay";
+	static constexpr const char *ACTION_DELAY_KEY = "twitch_action_delay";
 
 signals:
 	void settingsSaved();

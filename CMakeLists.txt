@@ -105,9 +105,12 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/GameDetector.cpp"
     "src/GameDetectorSettingsDialog.cpp"
     "src/IconProvider.cpp"
-    "src/TwitchChatBot.cpp"
+    "src/PlatformManager.cpp"
     "src/TwitchAuthManager.cpp"
+    "src/TrovoAuthManager.cpp"
     "src/GameListDialog.cpp"
+    "src/TwitchServiceAdapter.cpp"
+    "src/IPlatformService.h"
     )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME "game-detector")

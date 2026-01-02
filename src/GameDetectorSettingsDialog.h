@@ -24,10 +24,12 @@ public:
 
 private:
 	QPushButton *manageGamesButton = nullptr;
-	QLabel      *authStatusLabel = nullptr;
 	QPushButton *authButton      = nullptr;
 	QPushButton *disconnectButton = nullptr;
+	QPushButton *trovoAuthButton      = nullptr;
+	QPushButton *trovoDisconnectButton = nullptr;
 	QPushButton *okButton = nullptr;
+	QLabel      *authTimerLabel = nullptr;
 	QPushButton *cancelButton = nullptr;
 	QLabel      *commandLabel = nullptr;
 	QLineEdit   *commandInput = nullptr;
@@ -35,7 +37,7 @@ private:
 	QLineEdit   *noGameCommandInput = nullptr;
 	QLabel 		*delayLabel = nullptr;
 	QSpinBox 	*delaySpinBox = nullptr;
-	QComboBox   *twitchActionComboBox = nullptr;
+	QComboBox   *actionComboBox = nullptr;
 	QCheckBox   *unifiedAuthCheckbox = nullptr;
 	QCheckBox   *scanSteamCheckbox = nullptr;
 	QCheckBox   *scanEpicCheckbox = nullptr;
@@ -47,7 +49,9 @@ private:
 
 private slots:
 	void onAuthenticationFinished(bool success, const QString &username);
+	void onTrovoAuthenticationFinished(bool success, const QString &username);
 	void onDisconnectClicked();
+	void onTrovoDisconnectClicked();
 	void onManageGamesClicked();
 };
 

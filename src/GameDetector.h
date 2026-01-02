@@ -8,6 +8,7 @@
 #include <QHash>
 #include <tuple>
 #include <QFutureWatcher>
+#include <atomic>
 
 class GameDetector : public QObject {
 	Q_OBJECT
@@ -26,6 +27,8 @@ private:
 	bool tempScanEpic = true;
 	bool tempScanGog = true;
 	bool tempScanUbisoft = true;
+
+	std::atomic<bool> abortScan{false};
 
 	explicit GameDetector(QObject *parent = nullptr);
 

@@ -122,12 +122,21 @@ void GameListDialog::loadGames()
 			QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
 			nameItem->setIcon(IconProvider::getIconForFile(exePath));
 			manualGamesTable->setItem(newRow, 1, nameItem);
-			manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exeName));
+			QTableWidgetItem *exeItem = new QTableWidgetItem(exeName);
+			exeItem->setFlags(exeItem->flags() & ~Qt::ItemIsEditable);
+			manualGamesTable->setItem(newRow, 2, exeItem);
 			manualGamesTable->setItem(newRow, 3, new QTableWidgetItem(exePath));
 
 			QPushButton *removeRowButton = new QPushButton();
 			removeRowButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
-			connect(removeRowButton, &QPushButton::clicked, this, [this, newRow]() { manualGamesTable->removeRow(newRow); });
+			connect(removeRowButton, &QPushButton::clicked, this, [this, removeRowButton]() {
+				for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
+					if (manualGamesTable->cellWidget(i, 4) == removeRowButton) {
+						manualGamesTable->removeRow(i);
+						break;
+					}
+				}
+			});
 			manualGamesTable->setCellWidget(newRow, 4, removeRowButton);
 
 			obs_data_release(item);
@@ -197,12 +206,21 @@ void GameListDialog::onAddGameClicked()
 	QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
 	nameItem->setIcon(IconProvider::getIconForFile(filePath));
 	manualGamesTable->setItem(newRow, 1, nameItem);
-	manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exeName));
+	QTableWidgetItem *exeItem = new QTableWidgetItem(exeName);
+	exeItem->setFlags(exeItem->flags() & ~Qt::ItemIsEditable);
+	manualGamesTable->setItem(newRow, 2, exeItem);
 	manualGamesTable->setItem(newRow, 3, new QTableWidgetItem(filePath));
 
 	QPushButton *removeRowButton = new QPushButton();
 	removeRowButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
-	connect(removeRowButton, &QPushButton::clicked, this, [this, newRow]() { manualGamesTable->removeRow(newRow); });
+	connect(removeRowButton, &QPushButton::clicked, this, [this, removeRowButton]() {
+		for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
+			if (manualGamesTable->cellWidget(i, 4) == removeRowButton) {
+				manualGamesTable->removeRow(i);
+				break;
+			}
+		}
+	});
 	manualGamesTable->setCellWidget(newRow, 4, removeRowButton);
 }
 
@@ -218,12 +236,10 @@ void GameListDialog::onToggleAllClicked()
 		return;
 	}
 
-	// Determina o novo estado com base no primeiro item
 	QWidget *firstCellWidget = manualGamesTable->cellWidget(0, 0);
 	QCheckBox *firstCheckbox = firstCellWidget ? firstCellWidget->findChild<QCheckBox *>() : nullptr;
 	bool newState = firstCheckbox ? !firstCheckbox->isChecked() : true;
 
-	// Aplica o novo estado a todos os checkboxes
 	for (int i = 0; i < rowCount; ++i) {
 		QWidget *cellWidget = manualGamesTable->cellWidget(i, 0);
 		QCheckBox *checkbox = cellWidget ? cellWidget->findChild<QCheckBox *>() : nullptr;
@@ -245,7 +261,7 @@ void GameListDialog::onAutomaticScanFinished(const QList<std::tuple<QString, QSt
 		QString exePath = std::get<2>(gameTuple);
 
 		if (existingPaths.contains(exePath)) {
-			continue; // Pula se o jogo já estiver na lista
+			continue;
 		}
 
 		int newRow = manualGamesTable->rowCount();
@@ -263,12 +279,21 @@ void GameListDialog::onAutomaticScanFinished(const QList<std::tuple<QString, QSt
 		QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
 		nameItem->setIcon(IconProvider::getIconForFile(exePath));
 		manualGamesTable->setItem(newRow, 1, nameItem);
-		manualGamesTable->setItem(newRow, 2, new QTableWidgetItem(exeName));
+		QTableWidgetItem *exeItem = new QTableWidgetItem(exeName);
+		exeItem->setFlags(exeItem->flags() & ~Qt::ItemIsEditable);
+		manualGamesTable->setItem(newRow, 2, exeItem);
 		manualGamesTable->setItem(newRow, 3, new QTableWidgetItem(exePath));
 
 		QPushButton *removeRowButton = new QPushButton();
 		removeRowButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
-		connect(removeRowButton, &QPushButton::clicked, this, [this, newRow]() { manualGamesTable->removeRow(newRow); });
+		connect(removeRowButton, &QPushButton::clicked, this, [this, removeRowButton]() {
+			for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
+				if (manualGamesTable->cellWidget(i, 4) == removeRowButton) {
+					manualGamesTable->removeRow(i);
+					break;
+				}
+			}
+		});
 		manualGamesTable->setCellWidget(newRow, 4, removeRowButton);
 	}
 

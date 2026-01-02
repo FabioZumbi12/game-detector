@@ -1,4 +1,4 @@
-﻿#include "ConfigManager.h"
+﻿﻿#include "ConfigManager.h"
 #include <obs-data.h>
 #include <obs-module.h>
 #include <QFileInfo>
@@ -20,11 +20,10 @@ void ConfigManager::load()
 		blog(LOG_INFO, "[GameDetector] No config found. Creating new one...");
 		settings = obs_data_create();
 
-		// Defaults
 		obs_data_set_string(settings, COMMAND_KEY, "!setgame {game}");
 		obs_data_set_string(settings, COMMAND_NO_GAME_KEY, "!setgame just chatting");
 		obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);
-		obs_data_set_int(settings, TWITCH_ACTION_MODE_KEY, 0);
+		obs_data_set_int(settings, ACTION_MODE_KEY, 0);
 		obs_data_set_bool(settings, SCAN_STEAM_KEY, true);
 		obs_data_set_bool(settings, SCAN_EPIC_KEY, true);
 		obs_data_set_bool(settings, SCAN_GOG_KEY, true);
@@ -33,7 +32,7 @@ void ConfigManager::load()
 		obs_data_set_bool(settings, SCAN_PERIODICALLY_KEY, false);
 		obs_data_set_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY, 60);
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
-		obs_data_set_int(settings, TWITCH_ACTION_DELAY_KEY, 30);
+		obs_data_set_int(settings, ACTION_DELAY_KEY, 30);
 
 		obs_data_array_t *empty_array = obs_data_array_create();
 		obs_data_set_array(settings, MANUAL_GAMES_KEY, empty_array);
@@ -58,20 +57,20 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, COMMAND_NO_GAME_KEY))
 		obs_data_set_string(settings, COMMAND_NO_GAME_KEY, "!setgame just chatting");
 
-	if (!obs_data_has_user_value(settings, REFRESH_TOKEN_KEY))
-		obs_data_set_string(settings, REFRESH_TOKEN_KEY, "");
+	if (!obs_data_has_user_value(settings, TWITCH_REFRESH_TOKEN_KEY))
+		obs_data_set_string(settings, TWITCH_REFRESH_TOKEN_KEY, "");
 
-	if (!obs_data_has_user_value(settings, USER_ID_KEY))
-		obs_data_set_string(settings, USER_ID_KEY, "");
+	if (!obs_data_has_user_value(settings, TWITCH_USER_ID_KEY))
+		obs_data_set_string(settings, TWITCH_USER_ID_KEY, "");
 
-	if (!obs_data_has_user_value(settings, TOKEN_KEY))
-		obs_data_set_string(settings, TOKEN_KEY, "");
+	if (!obs_data_has_user_value(settings, TWITCH_TOKEN_KEY))
+		obs_data_set_string(settings, TWITCH_TOKEN_KEY, "");
 
 	if (!obs_data_has_user_value(settings, EXECUTE_AUTOMATICALLY_KEY))
 		obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);
 
-	if (!obs_data_has_user_value(settings, TWITCH_ACTION_MODE_KEY))
-		obs_data_set_int(settings, TWITCH_ACTION_MODE_KEY, 1);
+	if (!obs_data_has_user_value(settings, ACTION_MODE_KEY))
+		obs_data_set_int(settings, ACTION_MODE_KEY, 1);
 
 	if (!obs_data_has_user_value(settings, TWITCH_UNIFIED_AUTH_KEY))
 		obs_data_set_bool(settings, TWITCH_UNIFIED_AUTH_KEY, true);
@@ -100,8 +99,11 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, TWITCH_CHANNEL_LOGIN_KEY))
 		obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, "");
 
-	if (!obs_data_has_user_value(settings, TWITCH_ACTION_DELAY_KEY))
-		obs_data_set_int(settings, TWITCH_ACTION_DELAY_KEY, 30);
+	if (!obs_data_has_user_value(settings, TROVO_CHANNEL_LOGIN_KEY))
+		obs_data_set_string(settings, TROVO_CHANNEL_LOGIN_KEY, "");
+
+	if (!obs_data_has_user_value(settings, ACTION_DELAY_KEY))
+		obs_data_set_int(settings, ACTION_DELAY_KEY, 30);
 
 	if (!obs_data_has_user_value(settings, MANUAL_GAMES_KEY)) {
 		obs_data_array_t *empty_array = obs_data_array_create();
@@ -186,25 +188,46 @@ obs_data_t *ConfigManager::getSettings() const
 	return settings;
 }
 
-QString ConfigManager::getToken() const
+QString ConfigManager::getTwitchToken() const
 {
 	if (!settings)
 		return "";
-	return QString::fromUtf8(obs_data_get_string(settings, TOKEN_KEY));
+	return QString::fromUtf8(obs_data_get_string(settings, TWITCH_TOKEN_KEY));
 }
 
-QString ConfigManager::getRefreshToken() const
+QString ConfigManager::getTwitchRefreshToken() const
 {
 	if (!settings)
 		return "";
-	return QString::fromUtf8(obs_data_get_string(settings, REFRESH_TOKEN_KEY));
+	return QString::fromUtf8(obs_data_get_string(settings, TWITCH_REFRESH_TOKEN_KEY));
 }
 
-QString ConfigManager::getUserId() const
+QString ConfigManager::getTwitchUserId() const
 {
 	if (!settings)
 		return "";
-	return QString::fromUtf8(obs_data_get_string(settings, USER_ID_KEY));
+	return QString::fromUtf8(obs_data_get_string(settings, TWITCH_USER_ID_KEY));
+}
+
+QString ConfigManager::getTrovoToken() const
+{
+	if (!settings)
+		return "";
+	return QString::fromUtf8(obs_data_get_string(settings, TROVO_TOKEN_KEY));
+}
+
+QString ConfigManager::getTrovoUserId() const
+{
+	if (!settings)
+		return "";
+	return QString::fromUtf8(obs_data_get_string(settings, TROVO_USER_ID_KEY));
+}
+
+QString ConfigManager::getTrovoChannelLogin() const
+{
+	if (!settings)
+		return "";
+	return QString::fromUtf8(obs_data_get_string(settings, TROVO_CHANNEL_LOGIN_KEY));
 }
 
 QString ConfigManager::getCommand() const
@@ -235,11 +258,11 @@ bool ConfigManager::getExecuteAutomatically() const
 	return obs_data_get_bool(settings, EXECUTE_AUTOMATICALLY_KEY);
 }
 
-int ConfigManager::getTwitchActionMode() const
+int ConfigManager::getActionMode() const
 {
 	if (!settings)
 		return 0;
-	return (int)obs_data_get_int(settings, TWITCH_ACTION_MODE_KEY);
+	return (int)obs_data_get_int(settings, ACTION_MODE_KEY);
 }
 
 QString ConfigManager::getTwitchChannelLogin() const
@@ -305,33 +328,44 @@ int ConfigManager::getScanPeriodicallyInterval() const
 	return (int)obs_data_get_int(settings, SCAN_PERIODICALLY_INTERVAL_KEY);
 }
 
-int ConfigManager::getTwitchActionDelay() const
+int ConfigManager::getActionDelay() const
 {
 	if (!settings)
 		return 30;
-	return (int)obs_data_get_int(settings, TWITCH_ACTION_DELAY_KEY);
+	return (int)obs_data_get_int(settings, ACTION_DELAY_KEY);
 }
 
-void ConfigManager::setToken(const QString &value)
+void ConfigManager::setTwitchToken(const QString &value)
 {
-	obs_data_set_string(settings, TOKEN_KEY, value.toUtf8().constData());
-	save(settings);
+	obs_data_set_string(settings, TWITCH_TOKEN_KEY, value.toUtf8().constData());
 }
 
-void ConfigManager::setRefreshToken(const QString &value)
+void ConfigManager::setTwitchRefreshToken(const QString &value)
 {
-	obs_data_set_string(settings, REFRESH_TOKEN_KEY, value.toUtf8().constData());
-	save(settings);
+	obs_data_set_string(settings, TWITCH_REFRESH_TOKEN_KEY, value.toUtf8().constData());
 }
 
-void ConfigManager::setUserId(const QString &value)
+void ConfigManager::setTwitchUserId(const QString &value)
 {
-	obs_data_set_string(settings, USER_ID_KEY, value.toUtf8().constData());
-	save(settings);
+	obs_data_set_string(settings, TWITCH_USER_ID_KEY, value.toUtf8().constData());
+}
+
+void ConfigManager::setTrovoToken(const QString &value)
+{
+	obs_data_set_string(settings, TROVO_TOKEN_KEY, value.toUtf8().constData());
+}
+
+void ConfigManager::setTrovoUserId(const QString &value)
+{
+	obs_data_set_string(settings, TROVO_USER_ID_KEY, value.toUtf8().constData());
+}
+
+void ConfigManager::setTrovoChannelLogin(const QString &value)
+{
+	obs_data_set_string(settings, TROVO_CHANNEL_LOGIN_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTwitchChannelLogin(const QString &value)
 {
 	obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, value.toUtf8().constData());
-	save(settings);
 }

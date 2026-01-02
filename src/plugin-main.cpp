@@ -9,6 +9,7 @@
 
 #include "GameDetectorSettingsDialog.h"
 #include "GameDetectorDock.h"
+#include "PlatformManager.h"
 #include "TwitchAuthManager.h"
 
 static obs_hotkey_id g_set_game_hotkey_id;
@@ -97,7 +98,6 @@ bool obs_module_load(void)
 
 	obs_frontend_add_save_callback(save_hotkeys, nullptr);
 
-	// Register hotkeys
 	g_set_game_hotkey_id = obs_hotkey_register_frontend(
 		ConfigManager::HOTKEY_SET_GAME_KEY, obs_module_text("Hotkey.SetGame"), set_game_hotkey_callback, nullptr);
 	blog(LOG_INFO, "[GameDetector] Hotkey 'Set Game' registered with ID: %d", g_set_game_hotkey_id);
@@ -132,8 +132,8 @@ bool obs_module_load(void)
 		*conn = QObject::connect(&GameDetector::get(), &GameDetector::automaticScanFinished,
 				[conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
 					GameDetector::get().mergeAndSaveGames(foundGames);
-					GameDetector::get().loadGamesFromConfig(); // Recarrega a lista para o monitoramento
-					QObject::disconnect(*conn); // Auto-desconexão
+					GameDetector::get().loadGamesFromConfig();
+					QObject::disconnect(*conn);
 				});
 	}
 
@@ -146,6 +146,8 @@ void obs_module_unload(void)
 	obs_hotkey_unregister(g_rescan_games_hotkey_id);
 
 	GameDetector::get().stopScanning();
+	PlatformManager::get().shutdown();
+	TwitchAuthManager::get().shutdown();
 	ConfigManager::get().save(ConfigManager::get().getSettings());
 
 	blog(LOG_INFO, "[GameDetector] Plugin unloaded.");

@@ -23,15 +23,16 @@ QIcon IconProvider::getIconForFile(const QString &filePath)
 		if (extractedCount > 0) {
 			HICON bestIcon = largeIcons[0] ? largeIcons[0] : smallIcons[0];
 
+			QIcon icon;
 			if (bestIcon) {
 				QPixmap pixmap = QPixmap::fromImage(QImage::fromHICON(bestIcon));
-				for (UINT i = 0; i < extractedCount; ++i) {
-					if (largeIcons[i]) DestroyIcon(largeIcons[i]);
-					if (smallIcons[i]) DestroyIcon(smallIcons[i]);
-				}
-
-				return QIcon(pixmap);
+				icon = QIcon(pixmap);
 			}
+			for (UINT i = 0; i < extractedCount; ++i) {
+				if (largeIcons[i]) DestroyIcon(largeIcons[i]);
+				if (smallIcons[i]) DestroyIcon(smallIcons[i]);
+			}
+			if (!icon.isNull()) return icon;
 		}
 	}
 
