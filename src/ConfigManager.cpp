@@ -1,4 +1,4 @@
-﻿﻿#include "ConfigManager.h"
+﻿#include "ConfigManager.h"
 #include <obs-data.h>
 #include <obs-module.h>
 #include <QFileInfo>
