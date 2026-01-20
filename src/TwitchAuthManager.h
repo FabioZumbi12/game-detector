@@ -39,6 +39,8 @@ public:
 	QFuture<UpdateResult> updateChannelCategory(const QString &gameId);
 	QFuture<bool> sendChatMessage(const QString &broadcasterId, const QString &senderId, const QString &message);
 
+	QFuture<QString> getChannelCategory();
+
 signals:
 	void authenticationFinished(bool success, const QString &info);
 	void reauthenticationNeeded();

@@ -1,5 +1,6 @@
 #include "PlatformManager.h"
 #include "TwitchServiceAdapter.h"
+#include "TwitchAuthManager.h"
 #include "TrovoAuthManager.h"
 #include "IPlatformService.h"
 #include "ConfigManager.h"
@@ -30,6 +31,12 @@ PlatformManager::PlatformManager()
     gameIdWatcher = new QFutureWatcher<QString>(this);
     categoryUpdateWatcher = new QFutureWatcher<void *>(this);
     chatMessageWatcher = new QFutureWatcher<bool>(this);
+
+    categoryFetchWatcher = new QFutureWatcher<QHash<QString, QString>>(this);
+    connect(categoryFetchWatcher, &QFutureWatcher<QHash<QString, QString>>::finished, this, [this]() {
+        emit categoriesFetched(categoryFetchWatcher->result());
+    });
+
 
     cooldownTimer = new QTimer(this);
     cooldownTimer->setSingleShot(true);
@@ -67,14 +74,14 @@ bool PlatformManager::sendChatMessage(const QString &message)
     return true;
 }
 
-bool PlatformManager::updateCategory(const QString &gameName)
+bool PlatformManager::updateCategory(const QString &gameName, bool force)
 {
     if (isOnCooldown()) {
         blog(LOG_INFO, "[GameDetector/PlatformManager] Action is on cooldown. Ignoring new request.");
         return false;
     }
 
-    if (getLastSetCategory() == gameName) {
+	if (!force && getLastSetCategory() == gameName) {
         return false;
     }
 
@@ -88,7 +95,43 @@ bool PlatformManager::updateCategory(const QString &gameName)
     setLastSetCategory(gameName);
     setCooldown();
 
+    QTimer::singleShot(3000, this, [this]() {
+        fetchCurrentCategories(true);
+    });
+
     return true;
+}
+
+void PlatformManager::fetchCurrentCategories(bool force)
+{
+    if (!force) {
+        if (categoryFetchWatcher->isRunning()) {
+            return;
+        }
+
+        if (lastCategoryFetch.isValid() && lastCategoryFetch.secsTo(QDateTime::currentDateTime()) < 10) {
+            return;
+        }
+    }
+
+    lastCategoryFetch = QDateTime::currentDateTime();
+
+    auto future = QtConcurrent::run([this]() {
+        QHash<QString, QString> results;
+
+        if (!ConfigManager::get().getTwitchUserId().isEmpty()) {
+            QString category = TwitchAuthManager::get().getChannelCategory().result();
+            results["Twitch"] = category;
+        }
+
+        auto trovoManager = findChild<TrovoAuthManager*>();
+        if (trovoManager && trovoManager->isAuthenticated()) {
+            QString category = trovoManager->getChannelCategory().result();
+            results["Trovo"] = category;
+        }
+        return results;
+    });
+    categoryFetchWatcher->setFuture(future);
 }
 
 void PlatformManager::onGameIdReceived()

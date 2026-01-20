@@ -60,9 +60,9 @@ void TrovoAuthManager::startAuthentication(int mode, int unifiedAuth)
 
     QString scope;
     if (useUnifiedAuth) {
-        scope = "channel_update_self+user_details_self+chat_send_self";
+        scope = "channel_details_self+channel_update_self+user_details_self+chat_send_self";
     } else {
-        scope = (actionMode == 0) ? "user_details_self+chat_send_self" : "channel_update_self+user_details_self";
+        scope = (actionMode == 0) ? "channel_details_self+user_details_self+chat_send_self" : "channel_details_self+channel_update_self+user_details_self";
     }
     query.addQueryItem("scope", scope);
     query.addQueryItem("redirect_uri", AUTH_API_URL);
@@ -164,6 +164,12 @@ void TrovoAuthManager::fetchUserInfo()
 
 bool TrovoAuthManager::refreshAccessToken()
 {
+    if (lastRefreshAttempt.isValid() && lastRefreshAttempt.secsTo(QDateTime::currentDateTime()) < 5) {
+        blog(LOG_INFO, "[GameDetector/TrovoAuth] Refresh token attempt skipped due to rate limit.");
+        return false;
+    }
+    lastRefreshAttempt = QDateTime::currentDateTime();
+
     if (refreshToken.isEmpty()) return false;
 
     blog(LOG_INFO, "[GameDetector/TrovoAuth] Refreshing access token...");
@@ -299,9 +305,12 @@ std::pair<long, QString> TrovoAuthManager::performPOSTSync(const QString &url, c
         blog(LOG_WARNING, "[GameDetector/TrovoAuth] Error in POST request to Trovo API (Status: %ld): %s", http_code, response.toStdString().c_str());
         
         if (http_code == 401 && !refreshToken.isEmpty()) {
-            if (refreshAccessToken()) {
-                blog(LOG_INFO, "[GameDetector/TrovoAuth] Retrying POST request with new token...");
-                return performPOSTSync(url, body, accessToken);
+            QJsonDocument doc = QJsonDocument::fromJson(response.toUtf8());
+            if (doc.isObject() && doc.object().value("error").toString() == "accessTokenExpired") {
+                if (refreshAccessToken()) {
+                    blog(LOG_INFO, "[GameDetector/TrovoAuth] Retrying POST request with new token...");
+                    return performPOSTSync(url, body, accessToken);
+                }
             }
         }
     }
@@ -329,12 +338,42 @@ std::pair<long, QString> TrovoAuthManager::performGETSync(const QString &url, co
         blog(LOG_WARNING, "[GameDetector/TrovoAuth] Error in GET request to Trovo API (Status: %ld): %s", http_code, response.toStdString().c_str());
 
         if (http_code == 401 && !refreshToken.isEmpty()) {
-            if (refreshAccessToken()) {
-                blog(LOG_INFO, "[GameDetector/TrovoAuth] Retrying GET request with new token...");
-                return performGETSync(url, accessToken);
+            QJsonDocument doc = QJsonDocument::fromJson(response.toUtf8());
+            if (doc.isObject() && doc.object().value("error").toString() == "accessTokenExpired") {
+                if (refreshAccessToken()) {
+                    blog(LOG_INFO, "[GameDetector/TrovoAuth] Retrying GET request with new token...");
+                    return performGETSync(url, accessToken);
+                }
             }
         }
     }
 
     return {http_code, response};
+}
+
+QFuture<QString> TrovoAuthManager::getChannelCategory()
+{
+	if (!isAuthenticated()) {
+		return QtConcurrent::run(&threadPool, []() { return QString(); });
+	}
+
+	return RunTaskSafe(&threadPool, "TrovoAuth/getChannelCategory", [this]() -> QString {
+		auto [http_code, response] = performGETSync("https://open-api.trovo.live/openplatform/channel", accessToken);
+
+		QJsonDocument doc = QJsonDocument::fromJson(response.toUtf8());
+		if (http_code == 200) {
+			if (doc.isObject()) {
+				return doc.object()["category_name"].toString();
+			}
+			return "Erro: Resposta da API inválida";
+		}
+
+		if (doc.isObject()) {
+			QString message = doc.object()["message"].toString();
+			if (!message.isEmpty()) {
+				return "Erro: " + message;
+			}
+		}
+		return QString("Erro: HTTP %1").arg(http_code);
+	});
 }

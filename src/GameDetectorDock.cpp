@@ -32,8 +32,21 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	detectedGameName = "Just Chatting";
 	desiredCategory = "Just Chatting";
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
+	statusLabel->setStyleSheet("margin-top: -4px;");
 	statusLabel->setWordWrap(true);
 	mainLayout->addWidget(statusLabel);
+
+	twitchStatusLabel = new QLabel(this);
+	trovoStatusLabel = new QLabel(this);
+	twitchStatusLabel->setStyleSheet("font-size: 8pt; color: #888888; margin-top: -4px;");
+	trovoStatusLabel->setStyleSheet("font-size: 8pt; color: #888888; margin-top: -4px;");
+	twitchStatusLabel->setVisible(false);
+	trovoStatusLabel->setVisible(false);
+	twitchStatusLabel->setWordWrap(true);
+	trovoStatusLabel->setWordWrap(true);
+
+	mainLayout->addWidget(twitchStatusLabel);
+	mainLayout->addWidget(trovoStatusLabel);
 
 	QFormLayout *executionLayout = new QFormLayout();
 
@@ -68,6 +81,8 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 		QOverload<bool, const QString &, const QString &>::of(&GameDetectorDock::onCategoryUpdateFinished));
 	connect(&PlatformManager::get(), &PlatformManager::authenticationRequired, this,
 		&GameDetectorDock::onAuthenticationRequired);
+
+	connect(&PlatformManager::get(), &PlatformManager::categoriesFetched, this, &GameDetectorDock::onCategoriesFetched);
 
 	connect(&PlatformManager::get(), &PlatformManager::cooldownStarted, this, &GameDetectorDock::onCooldownStarted);
 	connect(&PlatformManager::get(), &PlatformManager::cooldownFinished, this, &GameDetectorDock::onCooldownFinished);
@@ -142,7 +157,7 @@ void GameDetectorDock::onSetJustChattingClicked()
 		return;
 	}
 	this->desiredCategory = "Just Chatting";
-	PlatformManager::get().updateCategory(desiredCategory);
+	PlatformManager::get().updateCategory(desiredCategory, true);
 }
 
 void GameDetectorDock::loadSettingsFromConfig()
@@ -166,11 +181,29 @@ void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gam
 	cooldownUpdateTimer->stop();
 	if (success) {
 		statusLabel->setText(QString(obs_module_text("Dock.CategoryUpdated")).arg(gameName));
+		PlatformManager::get().fetchCurrentCategories();
 	} else {
 		statusLabel->setText(QString(errorString).arg(gameName));
 	}
 
 	QTimer::singleShot(3000, this, &GameDetectorDock::restoreStatusLabel);
+}
+
+void GameDetectorDock::onCategoriesFetched(const QHash<QString, QString> &categories)
+{
+	if (twitchStatusLabel->isVisible() && categories.contains("Twitch")) {
+		QString category = categories.value("Twitch");
+		if (category.isEmpty())
+			category = obs_module_text("Status.CategoryNotAvailable");
+		twitchStatusLabel->setText(QString("Twitch: %1").arg(category));
+	}
+
+	if (trovoStatusLabel->isVisible() && categories.contains("Trovo")) {
+		QString category = categories.value("Trovo");
+		if (category.isEmpty())
+			category = obs_module_text("Status.CategoryNotAvailable");
+		trovoStatusLabel->setText(QString("Trovo: %1").arg(category));
+	}
 }
 
 void GameDetectorDock::checkWarningsAndStatus()
@@ -189,6 +222,8 @@ void GameDetectorDock::checkWarningsAndStatus()
 
 	if (!twitchConnected && !trovoConnected) {
 		statusLabel->setText(obs_module_text("Status.Warning.NotConnected"));
+		twitchStatusLabel->setVisible(false);
+		trovoStatusLabel->setVisible(false);
 		return;
 	}
 
@@ -205,6 +240,30 @@ void GameDetectorDock::checkWarningsAndStatus()
 	}
 
 	restoreStatusLabel();
+
+	if (twitchConnected || trovoConnected) {
+		PlatformManager::get().fetchCurrentCategories();
+	}
+
+	if (twitchConnected) {
+		twitchStatusLabel->setVisible(true);
+		if (twitchStatusLabel->text().isEmpty()) {
+			twitchStatusLabel->setText(obs_module_text("Status.Fetching"));
+		}
+	} else {
+		twitchStatusLabel->setVisible(false);
+		twitchStatusLabel->setText("");
+	}
+
+	if (trovoConnected) {
+		trovoStatusLabel->setVisible(true);
+		if (trovoStatusLabel->text().isEmpty()) {
+			trovoStatusLabel->setText(obs_module_text("Status.Fetching"));
+		}
+	} else {
+		trovoStatusLabel->setVisible(false);
+		trovoStatusLabel->setText("");
+	}
 }
 
 void GameDetectorDock::restoreStatusLabel()

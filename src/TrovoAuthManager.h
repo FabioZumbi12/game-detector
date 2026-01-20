@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QThreadPool>
 #include <QTimer>
+#include <QDateTime>
 
 class TrovoAuthManager : public IPlatformService {
     Q_OBJECT
@@ -21,6 +22,8 @@ public:
     
     void loadToken();
 
+    QFuture<QString>getChannelCategory();
+
 signals:
     void authenticationFinished(bool success, QString message);
     void authenticationTimerTick(int remainingSeconds);
@@ -33,6 +36,7 @@ private:
     bool isAuthenticating = false;
 
     QTimer *authTimeoutTimer = nullptr;
+    QDateTime lastRefreshAttempt;
     int authRemainingSeconds = 0;
     QThreadPool threadPool;
 

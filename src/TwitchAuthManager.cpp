@@ -12,6 +12,7 @@
 #include <QTcpSocket>
 #include <QJsonDocument>
 #include <QUrlQuery>
+#include <QJsonArray>
 #include <QTimer>
 
 static const QString SVG_SUCCESS = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24' fill='none' stroke='#4caf50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'></path><polyline points='22 4 12 14.01 9 11.01'></polyline></svg>";
@@ -388,6 +389,40 @@ std::pair<long, QString> TwitchAuthManager::performGETSync(const QString &url, c
 	}
 
 	return {http_code, response};
+}
+
+QFuture<QString> TwitchAuthManager::getChannelCategory()
+{
+	if (userId.isEmpty()) {
+		return QtConcurrent::run(&threadPool, []() { return QString(); });
+	}
+
+	QString url = "https://api.twitch.tv/helix/channels?broadcaster_id=" + userId;
+
+	return RunTaskSafe(&threadPool, "TwitchAuth/getChannelCategory", [this, url]() mutable -> QString {
+		auto [http_code, json] = performGETSync(url, accessToken);
+
+		if (http_code != 200) {
+			QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+			if (doc.isObject()) {
+				QString message = doc.object()["message"].toString();
+				if (!message.isEmpty()) {
+					return "Erro: " + message;
+				}
+			}
+			return QString("Erro: HTTP %1").arg(http_code);
+		}
+
+		QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+		if (!doc.isObject())
+			return "Erro: Resposta da API inválida";
+
+		QJsonArray arr = doc["data"].toArray();
+		if (arr.isEmpty())
+			return "Erro: Canal não encontrado";
+
+		return arr.first().toObject()["game_name"].toString();
+	});
 }
 
 std::pair<long, QString> TwitchAuthManager::performPATCHSync(const QString &url, const QJsonObject &body, const QString &token)

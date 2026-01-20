@@ -4,6 +4,7 @@
 #pragma once
 #include <QObject>
 #include <QFutureWatcher>
+#include <QDateTime>
 #include <QTimer>
 
 template <typename T>
@@ -20,18 +21,22 @@ public:
     }
 
     bool sendChatMessage(const QString &message);
-    bool updateCategory(const QString &gameName);
+	bool updateCategory(const QString &gameName, bool force = false);
     void shutdown();
     bool isOnCooldown() const;
     int getCooldownRemaining() const;
     void setLastSetCategory(const QString &categoryName);
     QString getLastSetCategory() const;
+    void fetchCurrentCategories(bool force = false);
 
 private:
     PlatformManager();
     ~PlatformManager();
 
     void setCooldown();
+    QDateTime lastCategoryFetch;
+    QFutureWatcher<QHash<QString, QString>> *categoryFetchWatcher;
+
     QTimer *cooldownTimer;
     bool onCooldown = false;
 
@@ -46,6 +51,7 @@ signals:
     void authenticationRequired();
     void cooldownStarted(int seconds);
     void cooldownFinished();
+    void categoriesFetched(const QHash<QString, QString> &categories);
 
 private slots:
     void onGameIdReceived();

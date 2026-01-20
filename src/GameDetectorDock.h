@@ -18,6 +18,8 @@ class GameDetectorDock : public QWidget {
 
 private: 
 	QLabel *statusLabel = nullptr;
+	QLabel *twitchStatusLabel = nullptr;
+	QLabel *trovoStatusLabel = nullptr;
 	QPushButton *executeCommandButton = nullptr;
 	QPushButton *setJustChattingButton = nullptr;
 	QPushButton *settingsButton = nullptr;
@@ -56,6 +58,7 @@ private slots:
 	void onAuthenticationRequired();
 	void onSettingsButtonClicked();
 	void checkWarningsAndStatus();
+	void onCategoriesFetched(const QHash<QString, QString> &categories);
 };
 
 #endif // GAMEDETECTORDOCK_H
