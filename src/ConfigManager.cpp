@@ -46,6 +46,10 @@ void ConfigManager::load()
 		obs_data_set_array(settings, HOTKEY_RESCAN_GAMES_KEY, empty_hotkey_array);
 		obs_data_array_release(empty_hotkey_array);
 
+		empty_hotkey_array = obs_data_array_create();
+		obs_data_set_array(settings, HOTKEY_SET_JUST_CHATTING_KEY, empty_hotkey_array);
+		obs_data_array_release(empty_hotkey_array);
+
 		return;
 	}
 
@@ -129,6 +133,12 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, HOTKEY_RESCAN_GAMES_KEY)) {
 		obs_data_array_t *empty_hotkey_array = obs_data_array_create();
 		obs_data_set_array(settings, HOTKEY_RESCAN_GAMES_KEY, empty_hotkey_array);
+		obs_data_array_release(empty_hotkey_array);
+	}
+
+	if (!obs_data_has_user_value(settings, HOTKEY_SET_JUST_CHATTING_KEY)) {
+		obs_data_array_t *empty_hotkey_array = obs_data_array_create();
+		obs_data_set_array(settings, HOTKEY_SET_JUST_CHATTING_KEY, empty_hotkey_array);
 		obs_data_array_release(empty_hotkey_array);
 	}
 }

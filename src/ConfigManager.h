@@ -21,7 +21,7 @@ private:
 	static constexpr const char *ACTION_MODE_KEY = "twitch_action_mode";
 	static constexpr const char *TWITCH_UNIFIED_AUTH_KEY = "twitch_unified_auth";
 	static constexpr const char *TWITCH_CHANNEL_LOGIN_KEY = "twitch_channel_login";
-
+	
 	obs_data_t *settings = nullptr;
 
 	explicit ConfigManager(QObject *parent = nullptr);
@@ -29,6 +29,7 @@ private:
 public:
 	static constexpr const char *HOTKEY_SET_GAME_KEY = "hotkey_set_game";
 	static constexpr const char *HOTKEY_RESCAN_GAMES_KEY = "hotkey_rescan_games";
+	static constexpr const char *HOTKEY_SET_JUST_CHATTING_KEY = "hotkey_set_just_chatting";
 
 	static ConfigManager &get();
 
