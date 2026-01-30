@@ -27,6 +27,11 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 	QGroupBox *gamesGroup = new QGroupBox(obs_module_text("Settings.GameList"));
 	QVBoxLayout *gamesLayout = new QVBoxLayout();
 
+	QLabel *hintLabel = new QLabel(obs_module_text("GameList.Hint"));
+	hintLabel->setWordWrap(true);
+	hintLabel->setStyleSheet("color: #888; font-style: italic; margin-bottom: 5px;");
+	gamesLayout->addWidget(hintLabel);
+
 	manualGamesTable = new QTableWidget();
 	manualGamesTable->setColumnCount(5);
 	manualGamesTable->setHorizontalHeaderLabels(QStringList() << ""
@@ -178,7 +183,7 @@ void GameListDialog::saveGames()
 
 void GameListDialog::onAddGameClicked()
 {
-	QString filePath = QFileDialog::getOpenFileName(this, "Select Game Executable", "", "Executables (*.exe)");
+	QString filePath = QFileDialog::getOpenFileName(this, obs_module_text("GameList.SelectExe.Title"), "", obs_module_text("GameList.SelectExe.Filter"));
 	if (filePath.isEmpty()) {
 		return;
 	}
