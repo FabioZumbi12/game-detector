@@ -57,12 +57,14 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	QHBoxLayout *buttonsLayout = new QHBoxLayout();
 	executeCommandButton = new QPushButton(obs_module_text("Dock.SetGame"));
+	executeCommandButton->setCursor(Qt::PointingHandCursor);
 	executeCommandButton->setFixedHeight(executeCommandButton->sizeHint().height());
 	buttonsLayout->addWidget(executeCommandButton);
 
 	manualGameButton = new QPushButton();
 	manualGameButton->setIcon(style()->standardIcon(QStyle::SP_MessageBoxWarning));
 	manualGameButton->setToolTip(obs_module_text("Dock.ManualGame.Tooltip"));
+	manualGameButton->setCursor(Qt::PointingHandCursor);
 	manualGameButton->setFixedSize(executeCommandButton->sizeHint().height(), executeCommandButton->sizeHint().height());
 	buttonsLayout->addWidget(manualGameButton);
 
@@ -75,6 +77,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	executionLayout->addRow(buttonsLayout);
 	setJustChattingButton = new QPushButton(obs_module_text("Dock.SetJustChatting"));
+	setJustChattingButton->setCursor(Qt::PointingHandCursor);
 	setJustChattingButton->setFixedHeight(executeCommandButton->sizeHint().height());
 	executionLayout->addRow(setJustChattingButton);
 

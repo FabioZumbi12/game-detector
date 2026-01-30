@@ -14,6 +14,7 @@
 #include <QFileDialog>
 #include <QGroupBox>
 #include <QCheckBox>
+#include <QFile>
 #include <obs-module.h>
 
 GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(parent)
@@ -106,6 +107,11 @@ void GameListDialog::loadGames()
 			QString exeName = obs_data_get_string(item, "exe");
 			QString exePath = obs_data_get_string(item, "path");
 			bool enabled = obs_data_get_bool(item, "enabled");
+
+			if (!QFile::exists(exePath)) {
+				obs_data_release(item);
+				continue;
+			}
 
 			int newRow = manualGamesTable->rowCount();
 			manualGamesTable->insertRow(newRow);

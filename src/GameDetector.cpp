@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QtConcurrent/QtConcurrent>
 #include <QJsonArray>
+#include <QFile>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -480,10 +481,6 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 
 void GameDetector::mergeAndSaveGames(const QList<std::tuple<QString, QString, QString>> &foundGames)
 {
-	if (foundGames.isEmpty()) {
-		return;
-	}
-
 	blog(LOG_INFO, "[GameDetector] Merging and saving games from startup/periodic scan.");
 
 	obs_data_t *settings = ConfigManager::get().getSettings();
@@ -492,13 +489,23 @@ void GameDetector::mergeAndSaveGames(const QList<std::tuple<QString, QString, QS
 		gamesArray = obs_data_array_create();
 	}
 
+	obs_data_array_t *newGamesArray = obs_data_array_create();
 	QSet<QString> existingPaths;
 	size_t count = obs_data_array_count(gamesArray);
+	int removedCount = 0;
+
 	for (size_t i = 0; i < count; ++i) {
 		obs_data_t *item = obs_data_array_item(gamesArray, i);
-		existingPaths.insert(obs_data_get_string(item, "path"));
+		QString path = obs_data_get_string(item, "path");
+		if (QFile::exists(path)) {
+			existingPaths.insert(path);
+			obs_data_array_push_back(newGamesArray, item);
+		} else {
+			removedCount++;
+		}
 		obs_data_release(item);
 	}
+	obs_data_array_release(gamesArray);
 
 	int addedCount = 0;
 	for (const auto &gameTuple : foundGames) {
@@ -509,18 +516,18 @@ void GameDetector::mergeAndSaveGames(const QList<std::tuple<QString, QString, QS
 			obs_data_set_string(item, "name", std::get<0>(gameTuple).toStdString().c_str());
 			obs_data_set_string(item, "exe", std::get<1>(gameTuple).toStdString().c_str());
 			obs_data_set_string(item, "path", exePath.toStdString().c_str());
-			obs_data_array_push_back(gamesArray, item);
+			obs_data_array_push_back(newGamesArray, item);
 			obs_data_release(item);
 			addedCount++;
 		}
 	}
 
-	if (addedCount > 0) {
-		obs_data_set_array(settings, ConfigManager::MANUAL_GAMES_KEY, gamesArray);
+	if (addedCount > 0 || removedCount > 0) {
+		obs_data_set_array(settings, ConfigManager::MANUAL_GAMES_KEY, newGamesArray);
 		ConfigManager::get().save(settings);
-		blog(LOG_INFO, "[GameDetector] Added %d new games to the configuration.", addedCount);
+		blog(LOG_INFO, "[GameDetector] Added %d new games and removed %d uninstalled games.", addedCount, removedCount);
 	}
-
+	obs_data_array_release(newGamesArray);
 }
 
 bool GameDetector::isExeIgnored(const QString &exeName) {
