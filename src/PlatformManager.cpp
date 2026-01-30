@@ -85,11 +85,23 @@ bool PlatformManager::updateCategory(const QString &gameName, bool force)
         return false;
     }
 
+    QStringList targetPlatforms = this->property("targetPlatforms").toStringList();
+    this->setProperty("targetPlatforms", QVariant());
+
     blog(LOG_INFO, "[GameDetector/PlatformManager] Changing category to: %s", gameName.toStdString().c_str());
 
     auto services = findChildren<IPlatformService *>();
     for (auto service : services) {
-        service->updateCategory(gameName);
+        bool shouldUpdate = true;
+        if (!targetPlatforms.isEmpty()) {
+            shouldUpdate = false;
+            if (qobject_cast<TwitchServiceAdapter*>(service) && targetPlatforms.contains("Twitch")) shouldUpdate = true;
+            else if (qobject_cast<TrovoAuthManager*>(service) && targetPlatforms.contains("Trovo")) shouldUpdate = true;
+        }
+
+        if (shouldUpdate) {
+            service->updateCategory(gameName);
+        }
     }
 
     setLastSetCategory(gameName);

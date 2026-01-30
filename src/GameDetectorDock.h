@@ -22,6 +22,7 @@ private:
 	QLabel *trovoStatusLabel = nullptr;
 	QPushButton *executeCommandButton = nullptr;
 	QPushButton *setJustChattingButton = nullptr;
+	QPushButton *manualGameButton = nullptr;
 	QPushButton *settingsButton = nullptr;
 	GameDetectorSettingsDialog *settingsDialog = nullptr;
 	QCheckBox *autoExecuteCheckbox = nullptr;

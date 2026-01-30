@@ -23,6 +23,8 @@
 #include <QVBoxLayout>
 #include <QTime>
 #include <obs.h>
+#include <QDialog>
+#include <QDialogButtonBox>
 
 GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 {
@@ -58,6 +60,12 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	executeCommandButton->setFixedHeight(executeCommandButton->sizeHint().height());
 	buttonsLayout->addWidget(executeCommandButton);
 
+	manualGameButton = new QPushButton();
+	manualGameButton->setIcon(style()->standardIcon(QStyle::SP_MessageBoxWarning));
+	manualGameButton->setToolTip(obs_module_text("Dock.ManualGame.Tooltip"));
+	manualGameButton->setFixedSize(executeCommandButton->sizeHint().height(), executeCommandButton->sizeHint().height());
+	buttonsLayout->addWidget(manualGameButton);
+
 	settingsButton = new QPushButton();
 	settingsButton->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
 	settingsButton->setToolTip(obs_module_text("Dock.OpenSettings"));
@@ -74,6 +82,90 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	connect(executeCommandButton, &QPushButton::clicked, this,
 			&GameDetectorDock::onExecuteCommandClicked);
+	connect(manualGameButton, &QPushButton::clicked, this, [this]() {
+		if (PlatformManager::get().isOnCooldown()) return;
+
+		QDialog dialog(this);
+		dialog.setWindowTitle(obs_module_text("Dock.ManualGame.Title"));
+		dialog.setMinimumWidth(300);
+		QVBoxLayout *layout = new QVBoxLayout(&dialog);
+
+		layout->addWidget(new QLabel(obs_module_text("Dock.ManualGame.EnterName"), &dialog));
+		QLineEdit *input = new QLineEdit(&dialog);
+		input->setText(this->desiredCategory);
+		layout->addWidget(input);
+
+		bool twitchConfigured = !ConfigManager::get().getTwitchUserId().isEmpty();
+		bool trovoConfigured = !ConfigManager::get().getTrovoUserId().isEmpty();
+		QCheckBox *twitchCheck = nullptr;
+		QCheckBox *trovoCheck = nullptr;
+
+		if (twitchConfigured) {
+			twitchCheck = new QCheckBox("Twitch", &dialog);
+			twitchCheck->setChecked(true);
+			layout->addWidget(twitchCheck);
+		}
+
+		if (trovoConfigured) {
+			trovoCheck = new QCheckBox("Trovo", &dialog);
+			trovoCheck->setChecked(true);
+			layout->addWidget(trovoCheck);
+		}
+
+		QLabel *statusLabel = new QLabel(&dialog);
+		statusLabel->setStyleSheet("color: #888; font-size: 9pt;");
+		layout->addWidget(statusLabel);
+
+		QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+		layout->addWidget(buttonBox);
+
+		connect(buttonBox, &QDialogButtonBox::accepted, [&, twitchCheck, trovoCheck]() {
+			QString gameName = input->text().trimmed();
+			if (gameName.isEmpty()) return;
+
+			QStringList platforms;
+			if (twitchCheck && twitchCheck->isChecked()) platforms << "Twitch";
+			if (trovoCheck && trovoCheck->isChecked()) platforms << "Trovo";
+
+			if ((twitchCheck || trovoCheck) && platforms.isEmpty()) return;
+
+			if (!platforms.isEmpty()) {
+				PlatformManager::get().setProperty("targetPlatforms", platforms);
+			}
+
+			buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
+			input->setEnabled(false);
+			if (twitchCheck) twitchCheck->setEnabled(false);
+			if (trovoCheck) trovoCheck->setEnabled(false);
+			statusLabel->setText(obs_module_text("Dock.ManualGame.Updating"));
+			this->desiredCategory = gameName;
+
+			disconnect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog, nullptr);
+			connect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog,
+				[&, gameName](bool success, const QString &name, const QString &error) {
+					if (name.compare(gameName, Qt::CaseInsensitive) == 0) {
+						if (success) dialog.accept();
+						else {
+							statusLabel->setText(QString(obs_module_text("Dock.ManualGame.Error")).arg(error));
+							buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
+							input->setEnabled(true);
+							if (twitchCheck) twitchCheck->setEnabled(true);
+							if (trovoCheck) trovoCheck->setEnabled(true);
+						}
+					}
+				});
+			
+			if (!PlatformManager::get().updateCategory(gameName, true)) {
+				statusLabel->setText(obs_module_text("Dock.ManualGame.Cooldown"));
+				buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
+				input->setEnabled(true);
+				if (twitchCheck) twitchCheck->setEnabled(true);
+				if (trovoCheck) trovoCheck->setEnabled(true);
+			}
+		});
+		connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+		dialog.exec();
+	});
 	connect(setJustChattingButton, &QPushButton::clicked, this, &GameDetectorDock::onSetJustChattingClicked);
 	connect(&GameDetector::get(), &GameDetector::gameDetected, this, &GameDetectorDock::onGameDetected);
 	connect(&GameDetector::get(), &GameDetector::noGameDetected, this, &GameDetectorDock::onNoGameDetected);
@@ -305,6 +397,9 @@ void GameDetectorDock::onAuthenticationRequired()
 void GameDetectorDock::onCooldownStarted(int seconds)
 {
 	GameDetector::get().stopScanning();
+	if (executeCommandButton) executeCommandButton->setEnabled(false);
+	if (setJustChattingButton) setJustChattingButton->setEnabled(false);
+	if (manualGameButton) manualGameButton->setEnabled(false);
 	cooldownUpdateTimer->setProperty("remaining", seconds);
 	updateCooldownLabel();
 	cooldownUpdateTimer->start(1000);
@@ -314,6 +409,9 @@ void GameDetectorDock::onCooldownFinished()
 {
 	cooldownUpdateTimer->stop();
 	GameDetector::get().startScanning();
+	if (executeCommandButton) executeCommandButton->setEnabled(true);
+	if (setJustChattingButton) setJustChattingButton->setEnabled(true);
+	if (manualGameButton) manualGameButton->setEnabled(true);
 	checkWarningsAndStatus();
 }
 
