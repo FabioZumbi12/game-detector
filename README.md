@@ -8,6 +8,8 @@
 Plugin to detect installed games and integrate with Twitch  
 OBS Plugins Page: https://obsproject.com/forum/resources/game-detector.2260/
 
+**🎯 Minimum OBS Version: 28.0+** | **Latest Built: OBS 31.1.1**
+
 ---
 
 ## 📘 About Game Detector OBS Plugin

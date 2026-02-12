@@ -3,6 +3,8 @@
 #  It includes options for enabling the obs-frontend-api and Qt functionalities,
 #  and specifies custom output directories for the built plugin and its associated data.
 #  
+#  ✅ Compatible with OBS 28.0+ (Qt5 for OBS 28-29, Qt6 for OBS 30+)
+#  
 #  If the build fail (the folder build_x64 don't exists), run on terminal: cmake --preset windows-x64
 #
 #  For buils on github, push tags:
@@ -79,8 +81,18 @@ if(ENABLE_FRONTEND_API)
 endif()
 
 if(ENABLE_QT)
-  find_package(Qt6 COMPONENTS Widgets Core Network REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)
+  # Try Qt6 first (OBS 30+), fall back to Qt5 (OBS 28-29)
+  find_package(Qt6 COMPONENTS Widgets Core Network QUIET)
+  
+  if(Qt6_FOUND)
+    message(STATUS "[GameDetector] Using Qt6 (OBS 30+)")
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)
+  else()
+    message(STATUS "[GameDetector] Qt6 not found, trying Qt5 (OBS 28-29)")
+    find_package(Qt5 5.15 COMPONENTS Widgets Core Network REQUIRED)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt5::Core Qt5::Widgets Qt5::Network)
+  endif()
+  
   target_compile_options(
     ${CMAKE_PROJECT_NAME}
     PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>

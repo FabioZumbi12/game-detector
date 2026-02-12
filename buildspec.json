@@ -41,5 +41,10 @@
   "version": "1.0.0",
   "author": "FabioZumbi12",
   "website": "https://github.com/FabioZumbi12/game-detector/",
-  "email": "fabio.fmagalhaes12@gmail.com"
+  "email": "fabio.fmagalhaes12@gmail.com",
+  "minimum_obs_version": "28.0.0",
+  "compatibility": {
+    "obs_versions": "28.0.0+",
+    "notes": "Compatible with OBS 28+. Uses Qt5 for OBS 28-29, Qt6 for OBS 30+"
+  }
 }
