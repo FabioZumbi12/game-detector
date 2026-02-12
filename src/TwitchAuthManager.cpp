@@ -71,7 +71,24 @@ TwitchAuthManager::~TwitchAuthManager()
 
 void TwitchAuthManager::shutdown()
 {
+	if (authTimeoutTimer && authTimeoutTimer->isActive()) {
+		authTimeoutTimer->stop();
+	}
+	if (server && server->isListening()) {
+		server->close();
+	}
 	threadPool.waitForDone();
+
+	for (auto sock : clientSockets) {
+		if (sock) {
+			if (sock->isOpen()) {
+				sock->disconnectFromHost();
+				sock->close();
+			}
+			sock->deleteLater();
+		}
+	}
+	clientSockets.clear();
 }
 
 void TwitchAuthManager::loadToken()
@@ -158,9 +175,10 @@ void TwitchAuthManager::onNewConnection()
 	QTcpSocket *clientSocket = server->nextPendingConnection();
 	if (!clientSocket)
 		return;
-
 	authTimeoutTimer->stop();
 	emit authenticationTimerTick(0);
+
+	clientSockets.append(clientSocket);
 
 	connect(clientSocket, &QTcpSocket::readyRead, this, [this, clientSocket]() {
 		if (!clientSocket || !clientSocket->isValid())
@@ -239,7 +257,12 @@ void TwitchAuthManager::onNewConnection()
 		}
 	});
 
-	connect(clientSocket, &QTcpSocket::disconnected, clientSocket, &QTcpSocket::deleteLater);
+	connect(clientSocket, &QTcpSocket::disconnected, this, [this, clientSocket]() {
+		if (clientSocket) {
+			clientSocket->deleteLater();
+		}
+		clientSockets.removeAll(clientSocket);
+	});
 }
 
 QString TwitchAuthManager::getAccessToken()

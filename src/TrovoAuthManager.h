@@ -7,6 +7,8 @@
 #include <QThreadPool>
 #include <QTimer>
 #include <QDateTime>
+#include <QPointer>
+#include <QList>
 
 class TrovoAuthManager : public IPlatformService {
     Q_OBJECT
@@ -39,6 +41,7 @@ private:
     QDateTime lastRefreshAttempt;
     int authRemainingSeconds = 0;
     QThreadPool threadPool;
+    QList<QPointer<QTcpSocket>> clientSockets;
 
     const QString AUTH_API_URL = "https://trovo-obs.areaz12server.net.br";
     const QString CLIENT_ID = "b07641be5083b975423de98ee83e8e0a";

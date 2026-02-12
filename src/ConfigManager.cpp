@@ -171,6 +171,14 @@ void ConfigManager::save(obs_data_t *data)
 	}
 }
 
+void ConfigManager::shutdown()
+{
+	if (settings) {
+		obs_data_release(settings);
+		settings = nullptr;
+	}
+}
+
 void ConfigManager::saveManualGames(obs_data_array_t *gamesArray)
 {
 	if (!settings)

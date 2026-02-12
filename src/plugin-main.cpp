@@ -2,6 +2,7 @@
 #include <obs-frontend-api.h>
 #include <QMainWindow>
 #include <QObject>
+#include <QCoreApplication>
 #include <obs-module.h>
 
 #include "ConfigManager.h"
@@ -165,14 +166,24 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+	obs_frontend_remove_save_callback(save_hotkeys, nullptr);
+
 	obs_hotkey_unregister(g_set_game_hotkey_id);
 	obs_hotkey_unregister(g_rescan_games_hotkey_id);
 	obs_hotkey_unregister(g_set_just_chatting_hotkey_id);
 
 	GameDetector::get().stopScanning();
-	PlatformManager::get().shutdown();
 	TwitchAuthManager::get().shutdown();
+	PlatformManager::get().shutdown();
 	ConfigManager::get().save(ConfigManager::get().getSettings());
+	ConfigManager::get().shutdown();
+
+	if (g_dock_widget) {
+		obs_frontend_remove_dock("game_detector");
+		QMetaObject::invokeMethod(g_dock_widget, "deleteLater", Qt::QueuedConnection);
+		QCoreApplication::processEvents();
+		g_dock_widget = nullptr;
+	}
 
 	blog(LOG_INFO, "[GameDetector] Plugin unloaded.");
 }

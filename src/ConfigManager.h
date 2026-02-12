@@ -35,6 +35,7 @@ public:
 
 	void load();
 	void save(obs_data_t *settings);
+	void shutdown();
 	void saveManualGames(obs_data_array_t *gamesArray);
 	obs_data_t *getSettings() const;
 	obs_data_array_t *getHotkeyData(const char *key) const;

@@ -8,6 +8,8 @@
 #include <QFuture>
 #include <QJsonObject>
 #include <QThreadPool>
+#include <QPointer>
+#include <QList>
 
 class QTcpServer;
 class QTcpSocket;
@@ -77,6 +79,7 @@ private:
 	QTimer *authTimeoutTimer = nullptr;
 	int authRemainingSeconds = 0;
 	QThreadPool threadPool;
+	QList<QPointer<QTcpSocket>> clientSockets;
 
 	static constexpr const char *CLIENT_ID = "wl4mx2l4sgmdvpwoek6pjronpor9en";
 	static constexpr const char *REDIRECT_URI = "http://localhost:30000/";

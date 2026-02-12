@@ -45,6 +45,7 @@ private:
     QFutureWatcher<QString> *gameIdWatcher;
     QFutureWatcher<bool> *chatMessageWatcher;
     QFutureWatcher<void *> *categoryUpdateWatcher;
+    bool shuttingDown = false;
 
 signals:
     void categoryUpdateFinished(bool success, const QString &gameName, const QString &errorString = QString());

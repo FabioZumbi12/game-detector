@@ -34,6 +34,9 @@ inline std::pair<long, QString> ExecuteNetworkRequest(const QString &url, const 
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     }
 
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+
     if (method == "POST") {
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());

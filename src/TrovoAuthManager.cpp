@@ -27,6 +27,17 @@ TrovoAuthManager::~TrovoAuthManager()
 {
     if (server->isListening()) server->close();
     threadPool.waitForDone();
+
+    for (auto sock : clientSockets) {
+        if (sock) {
+            if (sock->isOpen()) {
+                sock->disconnectFromHost();
+                sock->close();
+            }
+            sock->deleteLater();
+        }
+    }
+    clientSockets.clear();
 }
 
 void TrovoAuthManager::loadToken()
@@ -92,8 +103,14 @@ void TrovoAuthManager::onNewConnection()
 {
     QTcpSocket *clientSocket = server->nextPendingConnection();
     if (!clientSocket) return;
+    clientSockets.append(clientSocket);
 
-    connect(clientSocket, &QTcpSocket::disconnected, clientSocket, &QTcpSocket::deleteLater);
+    connect(clientSocket, &QTcpSocket::disconnected, this, [this, clientSocket]() {
+        if (clientSocket) {
+            clientSocket->deleteLater();
+        }
+        clientSockets.removeAll(clientSocket);
+    });
 
     connect(clientSocket, &QTcpSocket::readyRead, this, [this, clientSocket]() {
         QString request = clientSocket->readAll();

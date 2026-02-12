@@ -55,6 +55,32 @@ PlatformManager::~PlatformManager()
 
 void PlatformManager::shutdown()
 {
+    shuttingDown = true;
+
+    if (cooldownTimer && cooldownTimer->isActive()) {
+        cooldownTimer->stop();
+    }
+
+    if (categoryFetchWatcher && categoryFetchWatcher->isRunning()) {
+        categoryFetchWatcher->cancel();
+        categoryFetchWatcher->waitForFinished();
+    }
+
+    if (gameIdWatcher && gameIdWatcher->isRunning()) {
+        gameIdWatcher->cancel();
+        gameIdWatcher->waitForFinished();
+    }
+
+    if (chatMessageWatcher && chatMessageWatcher->isRunning()) {
+        chatMessageWatcher->cancel();
+        chatMessageWatcher->waitForFinished();
+    }
+
+    if (categoryUpdateWatcher && categoryUpdateWatcher->isRunning()) {
+        categoryUpdateWatcher->cancel();
+        categoryUpdateWatcher->waitForFinished();
+    }
+
     auto services = findChildren<IPlatformService *>();
     qDeleteAll(services);
 }
@@ -130,6 +156,10 @@ void PlatformManager::fetchCurrentCategories(bool force)
 
     auto future = QtConcurrent::run([this]() {
         QHash<QString, QString> results;
+
+        if (shuttingDown) {
+            return results;
+        }
 
         if (!ConfigManager::get().getTwitchUserId().isEmpty()) {
             QString category = TwitchAuthManager::get().getChannelCategory().result();
