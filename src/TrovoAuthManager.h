@@ -19,7 +19,7 @@ public:
 
     void startAuthentication(int mode = -1, int unifiedAuth = -1);
     bool isAuthenticated() const override;
-    void updateCategory(const QString &gameName) override;
+    void updateCategory(const QString &gameName, const QString &title = QString()) override;
     void sendChatMessage(const QString &message) override;
     
     void loadToken();
@@ -49,7 +49,7 @@ private:
     void onNewConnection();
     void onAuthTimerTick();
     void fetchUserInfo();
-    void searchAndSetCategory(const QString &gameName);
+    void searchAndSetCategory(const QString &gameName, const QString &title = QString());
     bool refreshAccessToken();
 
     QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body, const QString &token);

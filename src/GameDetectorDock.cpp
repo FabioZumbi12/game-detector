@@ -33,6 +33,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	detectedGameName = "Just Chatting";
 	desiredCategory = "Just Chatting";
+	this->desiredTitle = ConfigManager::get().getLastStreamTitle();
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
 	statusLabel->setStyleSheet("margin-top: -4px;");
 	statusLabel->setWordWrap(true);
@@ -93,6 +94,17 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 		dialog.setMinimumWidth(300);
 		QVBoxLayout *layout = new QVBoxLayout(&dialog);
 
+		QCheckBox *setTitleCheck = new QCheckBox(obs_module_text("Dock.ManualGame.SetTitle"), &dialog);
+		setTitleCheck->setChecked(!this->desiredTitle.isEmpty());
+		layout->addWidget(setTitleCheck);
+		
+		layout->addWidget(new QLabel(obs_module_text("Dock.ManualGame.EnterTitle"), &dialog));
+		QLineEdit *titleInput = new QLineEdit(&dialog);
+		titleInput->setText(this->desiredTitle);
+		titleInput->setEnabled(setTitleCheck->isChecked());
+		connect(setTitleCheck, &QCheckBox::toggled, titleInput, &QLineEdit::setEnabled);
+		layout->addWidget(titleInput);
+
 		layout->addWidget(new QLabel(obs_module_text("Dock.ManualGame.EnterName"), &dialog));
 		QLineEdit *input = new QLineEdit(&dialog);
 		input->setText(this->desiredCategory);
@@ -141,7 +153,18 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 			if (twitchCheck) twitchCheck->setEnabled(false);
 			if (trovoCheck) trovoCheck->setEnabled(false);
 			statusLabel->setText(obs_module_text("Dock.ManualGame.Updating"));
+			QString inputTitle = titleInput->text().trimmed();
+			bool willSetTitle = true;
+			if (setTitleCheck) willSetTitle = setTitleCheck->isChecked();
+			QString title = willSetTitle ? inputTitle : QString();
+
 			this->desiredCategory = gameName;
+			this->desiredTitle = inputTitle;
+
+			if (!inputTitle.isEmpty()) {
+				ConfigManager::get().setLastStreamTitle(inputTitle);
+				ConfigManager::get().save(ConfigManager::get().getSettings());
+			}
 
 			disconnect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog, nullptr);
 			connect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog,
@@ -158,7 +181,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 					}
 				});
 			
-			if (!PlatformManager::get().updateCategory(gameName, true)) {
+			if (!PlatformManager::get().updateCategory(gameName, title, true)) {
 				statusLabel->setText(obs_module_text("Dock.ManualGame.Cooldown"));
 				buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 				input->setEnabled(true);
@@ -252,7 +275,7 @@ void GameDetectorDock::onSetJustChattingClicked()
 		return;
 	}
 	this->desiredCategory = "Just Chatting";
-	PlatformManager::get().updateCategory(desiredCategory, true);
+	PlatformManager::get().updateCategory(desiredCategory, QString(), true);
 }
 
 void GameDetectorDock::loadSettingsFromConfig()

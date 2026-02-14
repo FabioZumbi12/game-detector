@@ -39,6 +39,7 @@ public:
 
 	QFuture<QString> getGameId(const QString &gameName);
 	QFuture<UpdateResult> updateChannelCategory(const QString &gameId);
+	QFuture<UpdateResult> updateChannelCategory(const QString &gameId, const QString &title);
 	QFuture<bool> sendChatMessage(const QString &broadcasterId, const QString &senderId, const QString &message);
 
 	QFuture<QString> getChannelCategory();

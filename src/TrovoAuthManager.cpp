@@ -216,7 +216,7 @@ bool TrovoAuthManager::refreshAccessToken()
     return false;
 }
 
-void TrovoAuthManager::updateCategory(const QString &gameName)
+void TrovoAuthManager::updateCategory(const QString &gameName, const QString &title)
 {
     int actionMode = ConfigManager::get().getActionMode();
 
@@ -237,10 +237,10 @@ void TrovoAuthManager::updateCategory(const QString &gameName)
         emit categoryUpdateFinished(false, gameName, obs_module_text("Trovo.Error.NotAuthenticated"));
         return;
     }
-    searchAndSetCategory(gameName);
+    searchAndSetCategory(gameName, title);
 }
 
-void TrovoAuthManager::searchAndSetCategory(const QString &gameName)
+void TrovoAuthManager::searchAndSetCategory(const QString &gameName, const QString &title)
 {
     QString searchTerm = gameName;
     if (gameName == "Just Chatting") {
@@ -251,7 +251,7 @@ void TrovoAuthManager::searchAndSetCategory(const QString &gameName)
     body["query"] = searchTerm;
     body["limit"] = 1;
 
-    (void)RunTaskSafe(&threadPool, "TrovoAuth/searchAndSetCategory", [this, body, gameName]() {
+    (void)RunTaskSafe(&threadPool, "TrovoAuth/searchAndSetCategory", [this, body, gameName, title]() {
         auto result = performPOSTSync("https://open-api.trovo.live/openplatform/searchcategory", body, accessToken);
         QString categoryId;
         if (result.first == 200) {
@@ -268,6 +268,7 @@ void TrovoAuthManager::searchAndSetCategory(const QString &gameName)
         QJsonObject updateBody;
         updateBody["channel_id"] = this->userId;
         updateBody["category_id"] = categoryId;
+        if (!title.isEmpty()) updateBody["title"] = title;
         auto updateResult = performPOSTSync("https://open-api.trovo.live/openplatform/channels/update", updateBody, accessToken);
         
         if (updateResult.first == 200) {

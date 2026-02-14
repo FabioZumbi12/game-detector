@@ -10,13 +10,15 @@ TwitchServiceAdapter::TwitchServiceAdapter(QObject *parent) : IPlatformService(p
 
     connect(gameIdWatcher, &QFutureWatcher<QString>::finished, this, [this]() {
         QString gameName = gameIdWatcher->property("gameName").toString();
+        QString title = gameIdWatcher->property("title").toString();
         QString gameId = gameIdWatcher->result();
         if (gameId.isEmpty()) {
             emit categoryUpdateFinished(false, gameName, obs_module_text("Twitch.Error.GameNotFound"));
             return;
         }
         updateWatcher->setProperty("gameName", gameName);
-        updateWatcher->setFuture(TwitchAuthManager::get().updateChannelCategory(gameId));
+        updateWatcher->setProperty("title", title);
+        updateWatcher->setFuture(TwitchAuthManager::get().updateChannelCategory(gameId, title));
     });
 
     connect(updateWatcher, &QFutureWatcher<TwitchAuthManager::UpdateResult>::finished, this, [this]() {
@@ -38,7 +40,7 @@ bool TwitchServiceAdapter::isAuthenticated() const {
     return !TwitchAuthManager::get().getAccessToken().isEmpty();
 }
 
-void TwitchServiceAdapter::updateCategory(const QString &gameName)
+void TwitchServiceAdapter::updateCategory(const QString &gameName, const QString &title)
 {
     int actionMode = ConfigManager::get().getActionMode();
     
@@ -61,6 +63,7 @@ void TwitchServiceAdapter::updateCategory(const QString &gameName)
     }
 
     gameIdWatcher->setProperty("gameName", gameName);
+    gameIdWatcher->setProperty("title", title);
     gameIdWatcher->setFuture(TwitchAuthManager::get().getGameId(gameName));
 }
 

@@ -363,6 +363,26 @@ QFuture<TwitchAuthManager::UpdateResult> TwitchAuthManager::updateChannelCategor
 	});
 }
 
+QFuture<TwitchAuthManager::UpdateResult> TwitchAuthManager::updateChannelCategory(const QString &gameId, const QString &title)
+{
+	QString url = "https://api.twitch.tv/helix/channels?broadcaster_id=" + userId;
+
+	QJsonObject body;
+	body["game_id"] = gameId;
+	if (!title.isEmpty()) body["title"] = title;
+
+	return RunTaskSafe(&threadPool, "TwitchAuth/updateChannelCategory", [this, url, body]() mutable -> UpdateResult {
+		auto [http_code, json] = performPATCHSync(url, body, accessToken);
+        
+		if (http_code == 204) {
+			return UpdateResult::Success;
+		} else if (http_code == 401) {
+			return UpdateResult::AuthError;
+		}
+		return UpdateResult::Failed;
+	});
+}
+
 QFuture<bool> TwitchAuthManager::sendChatMessage(const QString &broadcasterId, const QString &senderId, const QString &message)
 {
 	if (broadcasterId.isEmpty() || senderId.isEmpty() || message.isEmpty()) {

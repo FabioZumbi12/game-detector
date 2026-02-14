@@ -21,7 +21,7 @@ public:
     }
 
     bool sendChatMessage(const QString &message);
-	bool updateCategory(const QString &gameName, bool force = false);
+    bool updateCategory(const QString &gameName, const QString &title = QString(), bool force = false);
     void shutdown();
     bool isOnCooldown() const;
     int getCooldownRemaining() const;

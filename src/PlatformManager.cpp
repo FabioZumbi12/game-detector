@@ -100,7 +100,7 @@ bool PlatformManager::sendChatMessage(const QString &message)
     return true;
 }
 
-bool PlatformManager::updateCategory(const QString &gameName, bool force)
+bool PlatformManager::updateCategory(const QString &gameName, const QString &title, bool force)
 {
     if (isOnCooldown()) {
         blog(LOG_INFO, "[GameDetector/PlatformManager] Action is on cooldown. Ignoring new request.");
@@ -126,7 +126,7 @@ bool PlatformManager::updateCategory(const QString &gameName, bool force)
         }
 
         if (shouldUpdate) {
-            service->updateCategory(gameName);
+            service->updateCategory(gameName, title);
         }
     }
 

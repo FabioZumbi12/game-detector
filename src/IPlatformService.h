@@ -8,7 +8,7 @@ public:
     using QObject::QObject;
     virtual ~IPlatformService() = default;
 
-    virtual void updateCategory(const QString &gameName) = 0;
+    virtual void updateCategory(const QString &gameName, const QString &title = QString()) = 0;
     virtual void sendChatMessage(const QString &message) = 0;
     virtual bool isAuthenticated() const = 0;
 
