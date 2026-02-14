@@ -395,3 +395,62 @@ QFuture<QString> TrovoAuthManager::getChannelCategory()
 		return QString("Erro: HTTP %1").arg(http_code);
 	});
 }
+
+QFuture<QString> TrovoAuthManager::getChannelTitle()
+{
+    if (!isAuthenticated()) {
+        return QtConcurrent::run(&threadPool, []() { return QString(); });
+    }
+
+    return RunTaskSafe(&threadPool, "TrovoAuth/getChannelTitle", [this]() -> QString {
+        auto [http_code, response] = performGETSync("https://open-api.trovo.live/openplatform/channel", accessToken);
+        QJsonDocument doc = QJsonDocument::fromJson(response.toUtf8());
+        if (http_code == 200 && doc.isObject()) {
+            QJsonObject obj = doc.object();
+
+            // Direct common fields
+            if (obj.contains("title") && obj["title"].isString())
+                return obj["title"].toString();
+            if (obj.contains("stream_title") && obj["stream_title"].isString())
+                return obj["stream_title"].toString();
+            if (obj.contains("live_title") && obj["live_title"].isString())
+                return obj["live_title"].toString();
+            if (obj.contains("channel_name") && obj["channel_name"].isString())
+                return obj["channel_name"].toString();
+            if (obj.contains("channel_title") && obj["channel_title"].isString())
+                return obj["channel_title"].toString();
+
+            // Nested objects (common Trovo structures)
+            if (obj.contains("stream_info") && obj["stream_info"].isObject()) {
+                QJsonObject s = obj["stream_info"].toObject();
+                if (s.contains("title") && s["title"].isString()) return s["title"].toString();
+                if (s.contains("stream_title") && s["stream_title"].isString()) return s["stream_title"].toString();
+                if (s.contains("live_title") && s["live_title"].isString()) return s["live_title"].toString();
+            }
+
+            if (obj.contains("channel_info") && obj["channel_info"].isObject()) {
+                QJsonObject c = obj["channel_info"].toObject();
+                if (c.contains("title") && c["title"].isString()) return c["title"].toString();
+            }
+
+            // Sometimes API returns data array
+            if (doc.isObject() && obj.contains("data") && obj["data"].isArray()) {
+                QJsonArray arr = obj["data"].toArray();
+                if (!arr.isEmpty() && arr.first().isObject()) {
+                    QJsonObject first = arr.first().toObject();
+                    if (first.contains("title") && first["title"].isString()) return first["title"].toString();
+                    if (first.contains("stream_title") && first["stream_title"].isString()) return first["stream_title"].toString();
+                    if (first.contains("live_title") && first["live_title"].isString()) return first["live_title"].toString();
+                }
+            }
+        }
+        // If we reached here without returning a title, log response for debugging
+        if (http_code != 200) {
+            blog(LOG_WARNING, "[GameDetector/TrovoAuth] getChannelTitle HTTP %ld: %s", http_code, response.toStdString().c_str());
+        } else {
+            blog(LOG_INFO, "[GameDetector/TrovoAuth] getChannelTitle: no title found in response: %s", response.toStdString().c_str());
+        }
+
+        return QString();
+    });
+}

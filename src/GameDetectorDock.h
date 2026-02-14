@@ -19,7 +19,11 @@ class GameDetectorDock : public QWidget {
 private: 
 	QLabel *statusLabel = nullptr;
 	QLabel *twitchStatusLabel = nullptr;
+	QLabel *twitchPlatformLabel = nullptr;
+	QLabel *twitchTitleLabel = nullptr;
 	QLabel *trovoStatusLabel = nullptr;
+	QLabel *trovoPlatformLabel = nullptr;
+	QLabel *trovoTitleLabel = nullptr;
 	QPushButton *executeCommandButton = nullptr;
 	QPushButton *setJustChattingButton = nullptr;
 	QPushButton *manualGameButton = nullptr;
@@ -32,6 +36,8 @@ private:
 	QString detectedGameName;
 	QString desiredCategory = "Just Chatting";
 	QString desiredTitle = QString();
+	QString lastTwitchTitle = QString();
+	QString lastTrovoTitle = QString();
  
 	void restoreStatusLabel();
 	void onCooldownStarted(int seconds);

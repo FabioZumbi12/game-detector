@@ -109,8 +109,6 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, ACTION_DELAY_KEY))
 		obs_data_set_int(settings, ACTION_DELAY_KEY, 30);
 
-	if (!obs_data_has_user_value(settings, LAST_STREAM_TITLE_KEY))
-		obs_data_set_string(settings, LAST_STREAM_TITLE_KEY, "");
 
 	if (!obs_data_has_user_value(settings, MANUAL_GAMES_KEY)) {
 		obs_data_array_t *empty_array = obs_data_array_create();
@@ -293,13 +291,6 @@ QString ConfigManager::getTwitchChannelLogin() const
 	return QString::fromUtf8(obs_data_get_string(settings, TWITCH_CHANNEL_LOGIN_KEY));
 }
 
-QString ConfigManager::getLastStreamTitle() const
-{
-    if (!settings)
-        return "";
-    return QString::fromUtf8(obs_data_get_string(settings, LAST_STREAM_TITLE_KEY));
-}
-
 bool ConfigManager::getUnifiedAuth() const
 {
 	if (!settings)
@@ -398,8 +389,4 @@ void ConfigManager::setTwitchChannelLogin(const QString &value)
 	obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, value.toUtf8().constData());
 }
 
-void ConfigManager::setLastStreamTitle(const QString &value)
-{
-	if (!settings) return;
-	obs_data_set_string(settings, LAST_STREAM_TITLE_KEY, value.toUtf8().constData());
-}
+ 

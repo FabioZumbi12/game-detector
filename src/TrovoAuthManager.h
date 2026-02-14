@@ -25,6 +25,7 @@ public:
     void loadToken();
 
     QFuture<QString>getChannelCategory();
+    QFuture<QString> getChannelTitle();
 
 signals:
     void authenticationFinished(bool success, QString message);

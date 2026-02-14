@@ -52,7 +52,6 @@ public:
 	bool getExecuteAutomatically() const;
 	int getActionMode() const;
 	QString getTwitchChannelLogin() const;
-	QString getLastStreamTitle() const;
 	bool getUnifiedAuth() const;
 	bool getScanSteam() const;
 	bool getScanEpic() const;
@@ -69,7 +68,6 @@ public:
 	void setTrovoUserId(const QString &value);
 	void setTrovoChannelLogin(const QString &value);
 	void setTwitchChannelLogin(const QString &value);
-	void setLastStreamTitle(const QString &value);
 	int getActionDelay() const;
 
 
@@ -82,7 +80,7 @@ public:
 	static constexpr const char *SCAN_PERIODICALLY_KEY = "scan_periodically";
 	static constexpr const char *SCAN_PERIODICALLY_INTERVAL_KEY = "scan_periodically_interval";
 	static constexpr const char *ACTION_DELAY_KEY = "twitch_action_delay";
-	static constexpr const char *LAST_STREAM_TITLE_KEY = "last_stream_title";
+
 
 signals:
 	void settingsSaved();

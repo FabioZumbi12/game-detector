@@ -163,13 +163,15 @@ void PlatformManager::fetchCurrentCategories(bool force)
 
         if (!ConfigManager::get().getTwitchUserId().isEmpty()) {
             QString category = TwitchAuthManager::get().getChannelCategory().result();
-            results["Twitch"] = category;
+            QString title = TwitchAuthManager::get().getChannelTitle().result();
+            results["Twitch"] = category + "|||" + title;
         }
 
         auto trovoManager = findChild<TrovoAuthManager*>();
         if (trovoManager && trovoManager->isAuthenticated()) {
             QString category = trovoManager->getChannelCategory().result();
-            results["Trovo"] = category;
+            QString title = trovoManager->getChannelTitle().result();
+            results["Trovo"] = category + "|||" + title;
         }
         return results;
     });

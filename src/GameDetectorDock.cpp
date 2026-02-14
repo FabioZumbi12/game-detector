@@ -33,7 +33,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	detectedGameName = "Just Chatting";
 	desiredCategory = "Just Chatting";
-	this->desiredTitle = ConfigManager::get().getLastStreamTitle();
+	this->desiredTitle = QString();
 	statusLabel = new QLabel(obs_module_text("Status.Waiting"));
 	statusLabel->setStyleSheet("margin-top: -4px;");
 	statusLabel->setWordWrap(true);
@@ -41,14 +41,36 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	twitchStatusLabel = new QLabel(this);
 	trovoStatusLabel = new QLabel(this);
+	// Title labels (separate from category/status labels)
+	twitchTitleLabel = new QLabel(this);
+	trovoTitleLabel = new QLabel(this);
+	// Platform name labels (e.g. "Twitch:")
+	twitchPlatformLabel = new QLabel(this);
+	trovoPlatformLabel = new QLabel(this);
 	twitchStatusLabel->setStyleSheet("font-size: 8pt; color: #888888; margin-top: -4px;");
 	trovoStatusLabel->setStyleSheet("font-size: 8pt; color: #888888; margin-top: -4px;");
+	twitchTitleLabel->setStyleSheet("font-size: 8pt; color: #888888; margin-top: -2px;");
+	trovoTitleLabel->setStyleSheet("font-size: 8pt; color: #888888; margin-top: -2px;");
+	twitchPlatformLabel->setStyleSheet("font-weight: bold; margin-top: -6px;");
+	trovoPlatformLabel->setStyleSheet("font-weight: bold; margin-top: -6px;");
 	twitchStatusLabel->setVisible(false);
 	trovoStatusLabel->setVisible(false);
+	twitchTitleLabel->setVisible(false);
+	trovoTitleLabel->setVisible(false);
+	twitchPlatformLabel->setVisible(false);
+	trovoPlatformLabel->setVisible(false);
 	twitchStatusLabel->setWordWrap(true);
 	trovoStatusLabel->setWordWrap(true);
+	twitchTitleLabel->setWordWrap(true);
+	trovoTitleLabel->setWordWrap(true);
+	twitchPlatformLabel->setWordWrap(true);
+	trovoPlatformLabel->setWordWrap(true);
 
+	mainLayout->addWidget(twitchPlatformLabel);
+	mainLayout->addWidget(twitchTitleLabel);
 	mainLayout->addWidget(twitchStatusLabel);
+	mainLayout->addWidget(trovoPlatformLabel);
+	mainLayout->addWidget(trovoTitleLabel);
 	mainLayout->addWidget(trovoStatusLabel);
 
 	QFormLayout *executionLayout = new QFormLayout();
@@ -95,12 +117,21 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 		QVBoxLayout *layout = new QVBoxLayout(&dialog);
 
 		QCheckBox *setTitleCheck = new QCheckBox(obs_module_text("Dock.ManualGame.SetTitle"), &dialog);
-		setTitleCheck->setChecked(!this->desiredTitle.isEmpty());
+
+		// Prefill title from first available platform (Twitch then Trovo) instead of config
+		QString prefillTitle;
+		if (!ConfigManager::get().getTwitchUserId().isEmpty() && !this->lastTwitchTitle.isEmpty()) {
+			prefillTitle = this->lastTwitchTitle;
+		} else if (!ConfigManager::get().getTrovoUserId().isEmpty() && !this->lastTrovoTitle.isEmpty()) {
+			prefillTitle = this->lastTrovoTitle;
+		}
+
+		setTitleCheck->setChecked(!prefillTitle.isEmpty());
 		layout->addWidget(setTitleCheck);
-		
+
 		layout->addWidget(new QLabel(obs_module_text("Dock.ManualGame.EnterTitle"), &dialog));
 		QLineEdit *titleInput = new QLineEdit(&dialog);
-		titleInput->setText(this->desiredTitle);
+		titleInput->setText(prefillTitle);
 		titleInput->setEnabled(setTitleCheck->isChecked());
 		connect(setTitleCheck, &QCheckBox::toggled, titleInput, &QLineEdit::setEnabled);
 		layout->addWidget(titleInput);
@@ -161,11 +192,7 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 			this->desiredCategory = gameName;
 			this->desiredTitle = inputTitle;
 
-			if (!inputTitle.isEmpty()) {
-				ConfigManager::get().setLastStreamTitle(inputTitle);
-				ConfigManager::get().save(ConfigManager::get().getSettings());
-			}
-
+			// do not persist last title in config; use runtime prefill from fetched platform titles
 			disconnect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog, nullptr);
 			connect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog,
 				[&, gameName](bool success, const QString &name, const QString &error) {
@@ -310,17 +337,53 @@ void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gam
 void GameDetectorDock::onCategoriesFetched(const QHash<QString, QString> &categories)
 {
 	if (twitchStatusLabel->isVisible() && categories.contains("Twitch")) {
-		QString category = categories.value("Twitch");
-		if (category.isEmpty())
-			category = obs_module_text("Status.CategoryNotAvailable");
-		twitchStatusLabel->setText(QString("Twitch: %1").arg(category));
+		QString data = categories.value("Twitch");
+		QString category, title;
+		int sep = data.indexOf("|||");
+		if (sep >= 0) {
+			category = data.left(sep);
+			title = data.mid(sep + 3);
+		} else {
+			category = data;
+		}
+		if (category.isEmpty()) category = obs_module_text("Status.CategoryNotAvailable");
+		twitchStatusLabel->setText(QString(obs_module_text("Dock.Platform.Category")).arg(category));
+		// store last known title for prefill
+		this->lastTwitchTitle = title.trimmed();
+		if (title.isEmpty()) {
+			twitchTitleLabel->setText("");
+			twitchTitleLabel->setVisible(false);
+		} else {
+			twitchTitleLabel->setText(QString(obs_module_text("Dock.Platform.Title")).arg(title));
+			// set platform label text
+			twitchPlatformLabel->setText(obs_module_text("Dock.PlatformName.Twitch"));
+			twitchTitleLabel->setVisible(true);
+		}
 	}
 
 	if (trovoStatusLabel->isVisible() && categories.contains("Trovo")) {
-		QString category = categories.value("Trovo");
-		if (category.isEmpty())
-			category = obs_module_text("Status.CategoryNotAvailable");
-		trovoStatusLabel->setText(QString("Trovo: %1").arg(category));
+		QString data = categories.value("Trovo");
+		QString category, title;
+		int sep = data.indexOf("|||");
+		if (sep >= 0) {
+			category = data.left(sep);
+			title = data.mid(sep + 3);
+		} else {
+			category = data;
+		}
+		if (category.isEmpty()) category = obs_module_text("Status.CategoryNotAvailable");
+		trovoStatusLabel->setText(QString(obs_module_text("Dock.Platform.Category")).arg(category));
+		if (title.isEmpty()) {
+			trovoTitleLabel->setText("");
+			trovoTitleLabel->setVisible(false);
+		} else {
+			trovoTitleLabel->setText(QString(obs_module_text("Dock.Platform.Title")).arg(title));
+			// set platform label text
+			trovoPlatformLabel->setText(obs_module_text("Dock.PlatformName.Trovo"));
+			trovoTitleLabel->setVisible(true);
+		}
+		// store last known title for prefill
+		this->lastTrovoTitle = title.trimmed();
 	}
 }
 
@@ -364,21 +427,29 @@ void GameDetectorDock::checkWarningsAndStatus()
 	}
 
 	if (twitchConnected) {
+		twitchPlatformLabel->setVisible(true);
+		if (twitchPlatformLabel->text().isEmpty()) twitchPlatformLabel->setText(obs_module_text("Dock.PlatformName.Twitch"));
 		twitchStatusLabel->setVisible(true);
 		if (twitchStatusLabel->text().isEmpty()) {
 			twitchStatusLabel->setText(obs_module_text("Status.Fetching"));
 		}
 	} else {
+		twitchPlatformLabel->setVisible(false);
+		twitchPlatformLabel->setText("");
 		twitchStatusLabel->setVisible(false);
 		twitchStatusLabel->setText("");
 	}
 
 	if (trovoConnected) {
+		trovoPlatformLabel->setVisible(true);
+		if (trovoPlatformLabel->text().isEmpty()) trovoPlatformLabel->setText(obs_module_text("Dock.PlatformName.Trovo"));
 		trovoStatusLabel->setVisible(true);
 		if (trovoStatusLabel->text().isEmpty()) {
 			trovoStatusLabel->setText(obs_module_text("Status.Fetching"));
 		}
 	} else {
+		trovoPlatformLabel->setVisible(false);
+		trovoPlatformLabel->setText("");
 		trovoStatusLabel->setVisible(false);
 		trovoStatusLabel->setText("");
 	}

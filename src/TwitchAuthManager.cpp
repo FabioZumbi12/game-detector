@@ -468,6 +468,31 @@ QFuture<QString> TwitchAuthManager::getChannelCategory()
 	});
 }
 
+QFuture<QString> TwitchAuthManager::getChannelTitle()
+{
+	if (userId.isEmpty()) {
+		return QtConcurrent::run(&threadPool, []() { return QString(); });
+	}
+
+	QString url = "https://api.twitch.tv/helix/channels?broadcaster_id=" + userId;
+
+	return RunTaskSafe(&threadPool, "TwitchAuth/getChannelTitle", [this, url]() mutable -> QString {
+		auto [http_code, json] = performGETSync(url, accessToken);
+
+		if (http_code != 200) {
+			return QString();
+		}
+
+		QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+		if (!doc.isObject()) return QString();
+
+		QJsonArray arr = doc["data"].toArray();
+		if (arr.isEmpty()) return QString();
+
+		return arr.first().toObject().value("title").toString();
+	});
+}
+
 std::pair<long, QString> TwitchAuthManager::performPATCHSync(const QString &url, const QJsonObject &body, const QString &token)
 {
 	struct curl_slist *headers = nullptr;
