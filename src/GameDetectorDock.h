@@ -30,7 +30,6 @@ private:
 	QPushButton *settingsButton = nullptr;
 	GameDetectorSettingsDialog *settingsDialog = nullptr;
 	QCheckBox *autoExecuteCheckbox = nullptr;
-	QCheckBox *blockAutoUpdateWhileStreamingCheckbox = nullptr;
 	QTimer *cooldownUpdateTimer = nullptr;
 
 	QString configPath;
@@ -41,6 +40,7 @@ private:
 	QString lastTrovoTitle = QString();
 
 	void restoreStatusLabel();
+	void updateAutoExecuteCheckboxText();
 	void onCooldownStarted(int seconds);
 	void onCooldownFinished();
 	void updateCooldownLabel();

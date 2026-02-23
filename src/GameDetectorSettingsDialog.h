@@ -39,6 +39,7 @@ private:
 	QSpinBox *delaySpinBox = nullptr;
 	QComboBox *actionComboBox = nullptr;
 	QCheckBox *unifiedAuthCheckbox = nullptr;
+	QCheckBox *autoUpdateOnlyWhileStreamingCheckbox = nullptr;
 	QCheckBox *scanSteamCheckbox = nullptr;
 	QCheckBox *scanEpicCheckbox = nullptr;
 	QCheckBox *scanGogCheckbox = nullptr;

@@ -78,8 +78,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	autoExecuteCheckbox = new QCheckBox(obs_module_text("Dock.AutoExecute"));
 	executionLayout->addRow(autoExecuteCheckbox);
-	blockAutoUpdateWhileStreamingCheckbox = new QCheckBox(obs_module_text("Dock.BlockAutoUpdateWhileStreaming"));
-	executionLayout->addRow(blockAutoUpdateWhileStreamingCheckbox);
 
 	QHBoxLayout *buttonsLayout = new QHBoxLayout();
 	executeCommandButton = new QPushButton(obs_module_text("Dock.SetGame"));
@@ -255,8 +253,6 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 		&GameDetectorDock::onCooldownFinished);
 
 	connect(autoExecuteCheckbox, &QCheckBox::checkStateChanged, this, &GameDetectorDock::onSettingsChanged);
-	connect(blockAutoUpdateWhileStreamingCheckbox, &QCheckBox::checkStateChanged, this,
-		&GameDetectorDock::onSettingsChanged);
 
 	saveDelayTimer = new QTimer(this);
 	saveDelayTimer->setSingleShot(true);
@@ -284,8 +280,6 @@ void GameDetectorDock::saveDockSettings()
 	obs_data_t *settings = ConfigManager::get().getSettings();
 
 	obs_data_set_bool(settings, "execute_automatically", autoExecuteCheckbox->isChecked());
-	obs_data_set_bool(settings, "block_auto_update_while_streaming",
-			  blockAutoUpdateWhileStreamingCheckbox->isChecked());
 
 	ConfigManager::get().save(settings);
 
@@ -335,9 +329,7 @@ void GameDetectorDock::loadSettingsFromConfig()
 	autoExecuteCheckbox->blockSignals(true);
 	autoExecuteCheckbox->setChecked(ConfigManager::get().getExecuteAutomatically());
 	autoExecuteCheckbox->blockSignals(false);
-	blockAutoUpdateWhileStreamingCheckbox->blockSignals(true);
-	blockAutoUpdateWhileStreamingCheckbox->setChecked(ConfigManager::get().getBlockAutoUpdateWhileStreaming());
-	blockAutoUpdateWhileStreamingCheckbox->blockSignals(false);
+	updateAutoExecuteCheckboxText();
 	checkWarningsAndStatus();
 }
 
@@ -421,6 +413,8 @@ void GameDetectorDock::onCategoriesFetched(const QHash<QString, QString> &catego
 
 void GameDetectorDock::checkWarningsAndStatus()
 {
+	updateAutoExecuteCheckboxText();
+
 	if (GameDetector::get().isGameListEmpty()) {
 		statusLabel->setText(obs_module_text("Status.Warning.NoGames"));
 		return;
@@ -449,8 +443,8 @@ void GameDetectorDock::checkWarningsAndStatus()
 		return;
 	}
 
-	bool shouldAutoUpdateNow = !blockAutoUpdateWhileStreamingCheckbox->isChecked() ||
-				   obs_frontend_streaming_active();
+	bool onlyWhileStreaming = ConfigManager::get().getBlockAutoUpdateWhileStreaming();
+	bool shouldAutoUpdateNow = !onlyWhileStreaming || obs_frontend_streaming_active();
 	if (autoExecuteCheckbox->isChecked() && shouldAutoUpdateNow) {
 		PlatformManager::get().updateCategory(desiredCategory);
 	}
@@ -490,6 +484,16 @@ void GameDetectorDock::checkWarningsAndStatus()
 		trovoStatusLabel->setVisible(false);
 		trovoStatusLabel->setText("");
 	}
+}
+
+void GameDetectorDock::updateAutoExecuteCheckboxText()
+{
+	QString text = obs_module_text("Dock.AutoExecute");
+	if (ConfigManager::get().getBlockAutoUpdateWhileStreaming()) {
+		text += " ";
+		text += obs_module_text("Dock.AutoExecute.OnlyWhileLive");
+	}
+	autoExecuteCheckbox->setText(text);
 }
 
 void GameDetectorDock::restoreStatusLabel()

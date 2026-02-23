@@ -120,6 +120,9 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	unifiedAuthCheckbox = new QCheckBox(obs_module_text("Settings.UnifiedAuth"));
 	unifiedAuthCheckbox->setToolTip(obs_module_text("Settings.UnifiedAuth.Tooltip"));
 	actionComboBoxLayout->addWidget(unifiedAuthCheckbox);
+	autoUpdateOnlyWhileStreamingCheckbox =
+		new QCheckBox(obs_module_text("Settings.AutoUpdateOnlyWhileStreaming"));
+	actionComboBoxLayout->addWidget(autoUpdateOnlyWhileStreamingCheckbox);
 
 	QFormLayout *actionLayout = new QFormLayout();
 	actionLayout->addRow(actionComboBoxLayout);
@@ -241,6 +244,7 @@ void GameDetectorSettingsDialog::loadSettings()
 	actionComboBox->setCurrentIndex(ConfigManager::get().getActionMode());
 	actionComboBox->blockSignals(false);
 	unifiedAuthCheckbox->setChecked(ConfigManager::get().getUnifiedAuth());
+	autoUpdateOnlyWhileStreamingCheckbox->setChecked(ConfigManager::get().getBlockAutoUpdateWhileStreaming());
 	commandInput->setText(ConfigManager::get().getCommand());
 	noGameCommandInput->setText(ConfigManager::get().getNoGameCommand());
 	delaySpinBox->setValue(ConfigManager::get().getActionDelay());
@@ -261,6 +265,8 @@ void GameDetectorSettingsDialog::saveSettings()
 
 	obs_data_set_int(settings, "twitch_action_mode", actionComboBox->currentData().toInt());
 	obs_data_set_bool(settings, "twitch_unified_auth", unifiedAuthCheckbox->isChecked());
+	obs_data_set_bool(settings, "block_auto_update_while_streaming",
+			  autoUpdateOnlyWhileStreamingCheckbox->isChecked());
 	obs_data_set_string(settings, "twitch_command_message", commandInput->text().toStdString().c_str());
 	obs_data_set_string(settings, "twitch_command_no_game", noGameCommandInput->text().toStdString().c_str());
 	obs_data_set_int(settings, ConfigManager::ACTION_DELAY_KEY, delaySpinBox->value());
