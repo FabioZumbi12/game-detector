@@ -66,11 +66,11 @@ static void rescan_games_hotkey_callback(void *data, obs_hotkey_id id, obs_hotke
 		GameDetector::get().rescanForGames(scanSteam, scanEpic, scanGog, scanUbisoft);
 		auto conn = std::make_shared<QMetaObject::Connection>();
 		*conn = QObject::connect(&GameDetector::get(), &GameDetector::automaticScanFinished,
-				[conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
-					GameDetector::get().mergeAndSaveGames(foundGames);
-					GameDetector::get().loadGamesFromConfig();
-					QObject::disconnect(*conn);
-				});
+					 [conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
+						 GameDetector::get().mergeAndSaveGames(foundGames);
+						 GameDetector::get().loadGamesFromConfig();
+						 QObject::disconnect(*conn);
+					 });
 	}
 }
 
@@ -93,7 +93,7 @@ static void save_hotkeys(obs_data_t *save_data, bool saving, void *private_data)
 	obs_data_array_release(set_jc_hotkey_data);
 }
 
-static GameDetectorDock* get_dock()
+static GameDetectorDock *get_dock()
 {
 	return g_dock_widget;
 }
@@ -115,27 +115,33 @@ bool obs_module_load(void)
 
 	obs_frontend_add_save_callback(save_hotkeys, nullptr);
 
-	g_set_game_hotkey_id = obs_hotkey_register_frontend(
-		ConfigManager::HOTKEY_SET_GAME_KEY, obs_module_text("Hotkey.SetGame"), set_game_hotkey_callback, nullptr);
+	g_set_game_hotkey_id = obs_hotkey_register_frontend(ConfigManager::HOTKEY_SET_GAME_KEY,
+							    obs_module_text("Hotkey.SetGame"), set_game_hotkey_callback,
+							    nullptr);
 	blog(LOG_INFO, "[GameDetector] Hotkey 'Set Game' registered with ID: %d", g_set_game_hotkey_id);
 
-	g_set_just_chatting_hotkey_id = obs_hotkey_register_frontend(
-		ConfigManager::HOTKEY_SET_JUST_CHATTING_KEY, obs_module_text("Hotkey.SetJustChatting"), set_just_chatting_hotkey_callback, nullptr);
-	blog(LOG_INFO, "[GameDetector] Hotkey 'Set Just Chatting' registered with ID: %d", g_set_just_chatting_hotkey_id);
+	g_set_just_chatting_hotkey_id = obs_hotkey_register_frontend(ConfigManager::HOTKEY_SET_JUST_CHATTING_KEY,
+								     obs_module_text("Hotkey.SetJustChatting"),
+								     set_just_chatting_hotkey_callback, nullptr);
+	blog(LOG_INFO, "[GameDetector] Hotkey 'Set Just Chatting' registered with ID: %d",
+	     g_set_just_chatting_hotkey_id);
 
-	g_rescan_games_hotkey_id = obs_hotkey_register_frontend(
-		ConfigManager::HOTKEY_RESCAN_GAMES_KEY, obs_module_text("Hotkey.RescanGames"), rescan_games_hotkey_callback, nullptr);
+	g_rescan_games_hotkey_id = obs_hotkey_register_frontend(ConfigManager::HOTKEY_RESCAN_GAMES_KEY,
+								obs_module_text("Hotkey.RescanGames"),
+								rescan_games_hotkey_callback, nullptr);
 	blog(LOG_INFO, "[GameDetector] Hotkey 'Rescan Games' registered with ID: %d", g_rescan_games_hotkey_id);
 
 	obs_data_array_t *set_game_hotkey_data = ConfigManager::get().getHotkeyData(ConfigManager::HOTKEY_SET_GAME_KEY);
 	obs_hotkey_load(g_set_game_hotkey_id, set_game_hotkey_data);
 	obs_data_array_release(set_game_hotkey_data);
 
-	obs_data_array_t *set_jc_hotkey_data = ConfigManager::get().getHotkeyData(ConfigManager::HOTKEY_SET_JUST_CHATTING_KEY);
+	obs_data_array_t *set_jc_hotkey_data =
+		ConfigManager::get().getHotkeyData(ConfigManager::HOTKEY_SET_JUST_CHATTING_KEY);
 	obs_hotkey_load(g_set_just_chatting_hotkey_id, set_jc_hotkey_data);
 	obs_data_array_release(set_jc_hotkey_data);
 
-	obs_data_array_t *rescan_games_hotkey_data = ConfigManager::get().getHotkeyData(ConfigManager::HOTKEY_RESCAN_GAMES_KEY);
+	obs_data_array_t *rescan_games_hotkey_data =
+		ConfigManager::get().getHotkeyData(ConfigManager::HOTKEY_RESCAN_GAMES_KEY);
 	obs_hotkey_load(g_rescan_games_hotkey_id, rescan_games_hotkey_data);
 	obs_data_array_release(rescan_games_hotkey_data);
 
@@ -154,11 +160,11 @@ bool obs_module_load(void)
 		GameDetector::get().rescanForGames(scanSteam, scanEpic, scanGog, scanUbisoft);
 		auto conn = std::make_shared<QMetaObject::Connection>();
 		*conn = QObject::connect(&GameDetector::get(), &GameDetector::automaticScanFinished,
-				[conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
-					GameDetector::get().mergeAndSaveGames(foundGames);
-					GameDetector::get().loadGamesFromConfig();
-					QObject::disconnect(*conn);
-				});
+					 [conn](const QList<std::tuple<QString, QString, QString>> &foundGames) {
+						 GameDetector::get().mergeAndSaveGames(foundGames);
+						 GameDetector::get().loadGamesFromConfig();
+						 QObject::disconnect(*conn);
+					 });
 	}
 
 	return true;

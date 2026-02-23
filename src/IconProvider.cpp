@@ -18,7 +18,8 @@ QIcon IconProvider::getIconForFile(const QString &filePath)
 		std::vector<HICON> largeIcons(iconCount);
 		std::vector<HICON> smallIcons(iconCount);
 
-		UINT extractedCount = ExtractIconExW(wideFilePath.c_str(), 0, largeIcons.data(), smallIcons.data(), iconCount);
+		UINT extractedCount =
+			ExtractIconExW(wideFilePath.c_str(), 0, largeIcons.data(), smallIcons.data(), iconCount);
 
 		if (extractedCount > 0) {
 			HICON bestIcon = largeIcons[0] ? largeIcons[0] : smallIcons[0];
@@ -29,10 +30,13 @@ QIcon IconProvider::getIconForFile(const QString &filePath)
 				icon = QIcon(pixmap);
 			}
 			for (UINT i = 0; i < extractedCount; ++i) {
-				if (largeIcons[i]) DestroyIcon(largeIcons[i]);
-				if (smallIcons[i]) DestroyIcon(smallIcons[i]);
+				if (largeIcons[i])
+					DestroyIcon(largeIcons[i]);
+				if (smallIcons[i])
+					DestroyIcon(smallIcons[i]);
 			}
-			if (!icon.isNull()) return icon;
+			if (!icon.isNull())
+				return icon;
 		}
 	}
 

@@ -23,6 +23,7 @@ void ConfigManager::load()
 		obs_data_set_string(settings, COMMAND_KEY, "!setgame {game}");
 		obs_data_set_string(settings, COMMAND_NO_GAME_KEY, "!setgame just chatting");
 		obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);
+		obs_data_set_bool(settings, BLOCK_AUTO_UPDATE_WHILE_STREAMING_KEY, false);
 		obs_data_set_int(settings, ACTION_MODE_KEY, 0);
 		obs_data_set_bool(settings, SCAN_STEAM_KEY, true);
 		obs_data_set_bool(settings, SCAN_EPIC_KEY, true);
@@ -73,6 +74,9 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, EXECUTE_AUTOMATICALLY_KEY))
 		obs_data_set_bool(settings, EXECUTE_AUTOMATICALLY_KEY, false);
 
+	if (!obs_data_has_user_value(settings, BLOCK_AUTO_UPDATE_WHILE_STREAMING_KEY))
+		obs_data_set_bool(settings, BLOCK_AUTO_UPDATE_WHILE_STREAMING_KEY, false);
+
 	if (!obs_data_has_user_value(settings, ACTION_MODE_KEY))
 		obs_data_set_int(settings, ACTION_MODE_KEY, 1);
 
@@ -109,15 +113,14 @@ void ConfigManager::load()
 	if (!obs_data_has_user_value(settings, ACTION_DELAY_KEY))
 		obs_data_set_int(settings, ACTION_DELAY_KEY, 30);
 
-
 	if (!obs_data_has_user_value(settings, MANUAL_GAMES_KEY)) {
 		obs_data_array_t *empty_array = obs_data_array_create();
 		obs_data_set_array(settings, MANUAL_GAMES_KEY, empty_array);
 		obs_data_array_release(empty_array);
 	} else {
-		obs_data_array_t* games = obs_data_get_array(settings, MANUAL_GAMES_KEY);
+		obs_data_array_t *games = obs_data_get_array(settings, MANUAL_GAMES_KEY);
 		for (size_t i = 0; i < obs_data_array_count(games); ++i) {
-			obs_data_t* item = obs_data_array_item(games, i);
+			obs_data_t *item = obs_data_array_item(games, i);
 			if (!obs_data_has_user_value(item, "enabled"))
 				obs_data_set_bool(item, "enabled", true);
 			obs_data_release(item);
@@ -160,7 +163,7 @@ void ConfigManager::save(obs_data_t *data)
 	QString path = QString::fromUtf8(config_path_c);
 	QFileInfo info(path);
 	QDir dir = info.dir();
-	
+
 	if (!dir.exists())
 		dir.mkpath(".");
 
@@ -198,7 +201,8 @@ obs_data_array_t *ConfigManager::getHotkeyData(const char *key) const
 
 void ConfigManager::setHotkeyData(const char *key, obs_data_array_t *hotkeyArray)
 {
-	if (!settings) return;
+	if (!settings)
+		return;
 	obs_data_set_array(settings, key, hotkeyArray);
 }
 
@@ -275,6 +279,13 @@ bool ConfigManager::getExecuteAutomatically() const
 	if (!settings)
 		return false;
 	return obs_data_get_bool(settings, EXECUTE_AUTOMATICALLY_KEY);
+}
+
+bool ConfigManager::getBlockAutoUpdateWhileStreaming() const
+{
+	if (!settings)
+		return false;
+	return obs_data_get_bool(settings, BLOCK_AUTO_UPDATE_WHILE_STREAMING_KEY);
 }
 
 int ConfigManager::getActionMode() const
@@ -388,5 +399,3 @@ void ConfigManager::setTwitchChannelLogin(const QString &value)
 {
 	obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, value.toUtf8().constData());
 }
-
- 

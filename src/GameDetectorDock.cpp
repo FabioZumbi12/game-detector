@@ -23,6 +23,7 @@
 #include <QVBoxLayout>
 #include <QTime>
 #include <obs.h>
+#include <obs-frontend-api.h>
 #include <QDialog>
 #include <QDialogButtonBox>
 
@@ -77,6 +78,8 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	autoExecuteCheckbox = new QCheckBox(obs_module_text("Dock.AutoExecute"));
 	executionLayout->addRow(autoExecuteCheckbox);
+	blockAutoUpdateWhileStreamingCheckbox = new QCheckBox(obs_module_text("Dock.BlockAutoUpdateWhileStreaming"));
+	executionLayout->addRow(blockAutoUpdateWhileStreamingCheckbox);
 
 	QHBoxLayout *buttonsLayout = new QHBoxLayout();
 	executeCommandButton = new QPushButton(obs_module_text("Dock.SetGame"));
@@ -88,14 +91,16 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	manualGameButton->setIcon(style()->standardIcon(QStyle::SP_MessageBoxWarning));
 	manualGameButton->setToolTip(obs_module_text("Dock.ManualGame.Tooltip"));
 	manualGameButton->setCursor(Qt::PointingHandCursor);
-	manualGameButton->setFixedSize(executeCommandButton->sizeHint().height(), executeCommandButton->sizeHint().height());
+	manualGameButton->setFixedSize(executeCommandButton->sizeHint().height(),
+				       executeCommandButton->sizeHint().height());
 	buttonsLayout->addWidget(manualGameButton);
 
 	settingsButton = new QPushButton();
 	settingsButton->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
 	settingsButton->setToolTip(obs_module_text("Dock.OpenSettings"));
 	settingsButton->setCursor(Qt::PointingHandCursor);
-	settingsButton->setFixedSize(executeCommandButton->sizeHint().height(), executeCommandButton->sizeHint().height());
+	settingsButton->setFixedSize(executeCommandButton->sizeHint().height(),
+				     executeCommandButton->sizeHint().height());
 	buttonsLayout->addWidget(settingsButton);
 
 	executionLayout->addRow(buttonsLayout);
@@ -106,10 +111,10 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 	mainLayout->addLayout(executionLayout);
 
-	connect(executeCommandButton, &QPushButton::clicked, this,
-			&GameDetectorDock::onExecuteCommandClicked);
+	connect(executeCommandButton, &QPushButton::clicked, this, &GameDetectorDock::onExecuteCommandClicked);
 	connect(manualGameButton, &QPushButton::clicked, this, [this]() {
-		if (PlatformManager::get().isOnCooldown()) return;
+		if (PlatformManager::get().isOnCooldown())
+			return;
 
 		QDialog dialog(this);
 		dialog.setWindowTitle(obs_module_text("Dock.ManualGame.Title"));
@@ -162,18 +167,23 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 		statusLabel->setStyleSheet("color: #888; font-size: 9pt;");
 		layout->addWidget(statusLabel);
 
-		QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+		QDialogButtonBox *buttonBox =
+			new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
 		layout->addWidget(buttonBox);
 
 		connect(buttonBox, &QDialogButtonBox::accepted, [&, twitchCheck, trovoCheck]() {
 			QString gameName = input->text().trimmed();
-			if (gameName.isEmpty()) return;
+			if (gameName.isEmpty())
+				return;
 
 			QStringList platforms;
-			if (twitchCheck && twitchCheck->isChecked()) platforms << "Twitch";
-			if (trovoCheck && trovoCheck->isChecked()) platforms << "Trovo";
+			if (twitchCheck && twitchCheck->isChecked())
+				platforms << "Twitch";
+			if (trovoCheck && trovoCheck->isChecked())
+				platforms << "Trovo";
 
-			if ((twitchCheck || trovoCheck) && platforms.isEmpty()) return;
+			if ((twitchCheck || trovoCheck) && platforms.isEmpty())
+				return;
 
 			if (!platforms.isEmpty()) {
 				PlatformManager::get().setProperty("targetPlatforms", platforms);
@@ -181,12 +191,15 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 
 			buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 			input->setEnabled(false);
-			if (twitchCheck) twitchCheck->setEnabled(false);
-			if (trovoCheck) trovoCheck->setEnabled(false);
+			if (twitchCheck)
+				twitchCheck->setEnabled(false);
+			if (trovoCheck)
+				trovoCheck->setEnabled(false);
 			statusLabel->setText(obs_module_text("Dock.ManualGame.Updating"));
 			QString inputTitle = titleInput->text().trimmed();
 			bool willSetTitle = true;
-			if (setTitleCheck) willSetTitle = setTitleCheck->isChecked();
+			if (setTitleCheck)
+				willSetTitle = setTitleCheck->isChecked();
 			QString title = willSetTitle ? inputTitle : QString();
 
 			this->desiredCategory = gameName;
@@ -197,23 +210,30 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 			connect(&PlatformManager::get(), &PlatformManager::categoryUpdateFinished, &dialog,
 				[&, gameName](bool success, const QString &name, const QString &error) {
 					if (name.compare(gameName, Qt::CaseInsensitive) == 0) {
-						if (success) dialog.accept();
+						if (success)
+							dialog.accept();
 						else {
-							statusLabel->setText(QString(obs_module_text("Dock.ManualGame.Error")).arg(error));
+							statusLabel->setText(
+								QString(obs_module_text("Dock.ManualGame.Error"))
+									.arg(error));
 							buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 							input->setEnabled(true);
-							if (twitchCheck) twitchCheck->setEnabled(true);
-							if (trovoCheck) trovoCheck->setEnabled(true);
+							if (twitchCheck)
+								twitchCheck->setEnabled(true);
+							if (trovoCheck)
+								trovoCheck->setEnabled(true);
 						}
 					}
 				});
-			
+
 			if (!PlatformManager::get().updateCategory(gameName, title, true)) {
 				statusLabel->setText(obs_module_text("Dock.ManualGame.Cooldown"));
 				buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 				input->setEnabled(true);
-				if (twitchCheck) twitchCheck->setEnabled(true);
-				if (trovoCheck) trovoCheck->setEnabled(true);
+				if (twitchCheck)
+					twitchCheck->setEnabled(true);
+				if (trovoCheck)
+					trovoCheck->setEnabled(true);
 			}
 		});
 		connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -227,13 +247,16 @@ GameDetectorDock::GameDetectorDock(QWidget *parent) : QWidget(parent)
 	connect(&PlatformManager::get(), &PlatformManager::authenticationRequired, this,
 		&GameDetectorDock::onAuthenticationRequired);
 
-	connect(&PlatformManager::get(), &PlatformManager::categoriesFetched, this, &GameDetectorDock::onCategoriesFetched);
+	connect(&PlatformManager::get(), &PlatformManager::categoriesFetched, this,
+		&GameDetectorDock::onCategoriesFetched);
 
 	connect(&PlatformManager::get(), &PlatformManager::cooldownStarted, this, &GameDetectorDock::onCooldownStarted);
-	connect(&PlatformManager::get(), &PlatformManager::cooldownFinished, this, &GameDetectorDock::onCooldownFinished);
-
+	connect(&PlatformManager::get(), &PlatformManager::cooldownFinished, this,
+		&GameDetectorDock::onCooldownFinished);
 
 	connect(autoExecuteCheckbox, &QCheckBox::checkStateChanged, this, &GameDetectorDock::onSettingsChanged);
+	connect(blockAutoUpdateWhileStreamingCheckbox, &QCheckBox::checkStateChanged, this,
+		&GameDetectorDock::onSettingsChanged);
 
 	saveDelayTimer = new QTimer(this);
 	saveDelayTimer->setSingleShot(true);
@@ -261,6 +284,8 @@ void GameDetectorDock::saveDockSettings()
 	obs_data_t *settings = ConfigManager::get().getSettings();
 
 	obs_data_set_bool(settings, "execute_automatically", autoExecuteCheckbox->isChecked());
+	obs_data_set_bool(settings, "block_auto_update_while_streaming",
+			  blockAutoUpdateWhileStreamingCheckbox->isChecked());
 
 	ConfigManager::get().save(settings);
 
@@ -310,6 +335,9 @@ void GameDetectorDock::loadSettingsFromConfig()
 	autoExecuteCheckbox->blockSignals(true);
 	autoExecuteCheckbox->setChecked(ConfigManager::get().getExecuteAutomatically());
 	autoExecuteCheckbox->blockSignals(false);
+	blockAutoUpdateWhileStreamingCheckbox->blockSignals(true);
+	blockAutoUpdateWhileStreamingCheckbox->setChecked(ConfigManager::get().getBlockAutoUpdateWhileStreaming());
+	blockAutoUpdateWhileStreamingCheckbox->blockSignals(false);
 	checkWarningsAndStatus();
 }
 
@@ -319,8 +347,10 @@ void GameDetectorDock::onCategoryUpdateFinished(bool success, const QString &gam
 		bool twitchConfigured = !ConfigManager::get().getTwitchUserId().isEmpty();
 		bool trovoConfigured = !ConfigManager::get().getTrovoUserId().isEmpty();
 
-		if (errorString.contains("Twitch") && !twitchConfigured) return;
-		if (errorString.contains("Trovo") && !trovoConfigured) return;
+		if (errorString.contains("Twitch") && !twitchConfigured)
+			return;
+		if (errorString.contains("Trovo") && !trovoConfigured)
+			return;
 	}
 
 	cooldownUpdateTimer->stop();
@@ -346,7 +376,8 @@ void GameDetectorDock::onCategoriesFetched(const QHash<QString, QString> &catego
 		} else {
 			category = data;
 		}
-		if (category.isEmpty()) category = obs_module_text("Status.CategoryNotAvailable");
+		if (category.isEmpty())
+			category = obs_module_text("Status.CategoryNotAvailable");
 		twitchStatusLabel->setText(QString(obs_module_text("Dock.Platform.Category")).arg(category));
 		// store last known title for prefill
 		this->lastTwitchTitle = title.trimmed();
@@ -371,7 +402,8 @@ void GameDetectorDock::onCategoriesFetched(const QHash<QString, QString> &catego
 		} else {
 			category = data;
 		}
-		if (category.isEmpty()) category = obs_module_text("Status.CategoryNotAvailable");
+		if (category.isEmpty())
+			category = obs_module_text("Status.CategoryNotAvailable");
 		trovoStatusLabel->setText(QString(obs_module_text("Dock.Platform.Category")).arg(category));
 		if (title.isEmpty()) {
 			trovoTitleLabel->setText("");
@@ -390,13 +422,13 @@ void GameDetectorDock::onCategoriesFetched(const QHash<QString, QString> &catego
 void GameDetectorDock::checkWarningsAndStatus()
 {
 	if (GameDetector::get().isGameListEmpty()) {
-        statusLabel->setText(obs_module_text("Status.Warning.NoGames"));
-        return;
+		statusLabel->setText(obs_module_text("Status.Warning.NoGames"));
+		return;
 	}
 
 	bool twitchConnected = !ConfigManager::get().getTwitchUserId().isEmpty();
 	bool trovoConnected = false;
-	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager*>();
+	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager *>();
 	if (trovoManager) {
 		trovoConnected = trovoManager->isAuthenticated();
 	}
@@ -411,12 +443,15 @@ void GameDetectorDock::checkWarningsAndStatus()
 	if (PlatformManager::get().isOnCooldown()) {
 		if (!cooldownUpdateTimer->isActive()) {
 			int remaining = PlatformManager::get().getCooldownRemaining();
-			if (remaining > 0) onCooldownStarted(remaining);
+			if (remaining > 0)
+				onCooldownStarted(remaining);
 		}
 		return;
 	}
 
-	if (autoExecuteCheckbox->isChecked()) {
+	bool shouldAutoUpdateNow = !blockAutoUpdateWhileStreamingCheckbox->isChecked() ||
+				   obs_frontend_streaming_active();
+	if (autoExecuteCheckbox->isChecked() && shouldAutoUpdateNow) {
 		PlatformManager::get().updateCategory(desiredCategory);
 	}
 
@@ -428,7 +463,8 @@ void GameDetectorDock::checkWarningsAndStatus()
 
 	if (twitchConnected) {
 		twitchPlatformLabel->setVisible(true);
-		if (twitchPlatformLabel->text().isEmpty()) twitchPlatformLabel->setText(obs_module_text("Dock.PlatformName.Twitch"));
+		if (twitchPlatformLabel->text().isEmpty())
+			twitchPlatformLabel->setText(obs_module_text("Dock.PlatformName.Twitch"));
 		twitchStatusLabel->setVisible(true);
 		if (twitchStatusLabel->text().isEmpty()) {
 			twitchStatusLabel->setText(obs_module_text("Status.Fetching"));
@@ -442,7 +478,8 @@ void GameDetectorDock::checkWarningsAndStatus()
 
 	if (trovoConnected) {
 		trovoPlatformLabel->setVisible(true);
-		if (trovoPlatformLabel->text().isEmpty()) trovoPlatformLabel->setText(obs_module_text("Dock.PlatformName.Trovo"));
+		if (trovoPlatformLabel->text().isEmpty())
+			trovoPlatformLabel->setText(obs_module_text("Dock.PlatformName.Trovo"));
 		trovoStatusLabel->setVisible(true);
 		if (trovoStatusLabel->text().isEmpty()) {
 			trovoStatusLabel->setText(obs_module_text("Status.Fetching"));
@@ -494,9 +531,12 @@ void GameDetectorDock::onAuthenticationRequired()
 void GameDetectorDock::onCooldownStarted(int seconds)
 {
 	GameDetector::get().stopScanning();
-	if (executeCommandButton) executeCommandButton->setEnabled(false);
-	if (setJustChattingButton) setJustChattingButton->setEnabled(false);
-	if (manualGameButton) manualGameButton->setEnabled(false);
+	if (executeCommandButton)
+		executeCommandButton->setEnabled(false);
+	if (setJustChattingButton)
+		setJustChattingButton->setEnabled(false);
+	if (manualGameButton)
+		manualGameButton->setEnabled(false);
 	cooldownUpdateTimer->setProperty("remaining", seconds);
 	updateCooldownLabel();
 	cooldownUpdateTimer->start(1000);
@@ -506,9 +546,12 @@ void GameDetectorDock::onCooldownFinished()
 {
 	cooldownUpdateTimer->stop();
 	GameDetector::get().startScanning();
-	if (executeCommandButton) executeCommandButton->setEnabled(true);
-	if (setJustChattingButton) setJustChattingButton->setEnabled(true);
-	if (manualGameButton) manualGameButton->setEnabled(true);
+	if (executeCommandButton)
+		executeCommandButton->setEnabled(true);
+	if (setJustChattingButton)
+		setJustChattingButton->setEnabled(true);
+	if (manualGameButton)
+		manualGameButton->setEnabled(true);
 	checkWarningsAndStatus();
 }
 
@@ -517,11 +560,8 @@ void GameDetectorDock::updateCooldownLabel()
 	int remaining = cooldownUpdateTimer->property("remaining").toInt();
 	if (remaining >= 0) {
 		QString timeStr = QTime(0, 0).addSecs(remaining).toString("mm:ss");
-		QString currentGameText =
-			QString(obs_module_text("Status.Playing"))
-				.arg(desiredCategory);
-		statusLabel->setText(QString(obs_module_text("Dock.OnCooldown"))
-					 .arg(currentGameText).arg(timeStr));
+		QString currentGameText = QString(obs_module_text("Status.Playing")).arg(desiredCategory);
+		statusLabel->setText(QString(obs_module_text("Dock.OnCooldown")).arg(currentGameText).arg(timeStr));
 		cooldownUpdateTimer->setProperty("remaining", remaining - 1);
 	} else {
 		onCooldownFinished();
@@ -530,7 +570,10 @@ void GameDetectorDock::updateCooldownLabel()
 
 GameDetectorDock::~GameDetectorDock()
 {
-	if (cooldownUpdateTimer->isActive()) cooldownUpdateTimer->stop();
-	if (saveDelayTimer->isActive()) saveDelayTimer->stop();
-	if (statusCheckTimer->isActive()) statusCheckTimer->stop();
+	if (cooldownUpdateTimer->isActive())
+		cooldownUpdateTimer->stop();
+	if (saveDelayTimer->isActive())
+		saveDelayTimer->stop();
+	if (statusCheckTimer->isActive())
+		statusCheckTimer->stop();
 }

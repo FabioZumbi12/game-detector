@@ -37,13 +37,14 @@ GameDetector::GameDetector(QObject *parent) : QObject(parent)
 	connect(scanTimer, &QTimer::timeout, this, &GameDetector::scanProcesses);
 	connect(periodicScanTimer, &QTimer::timeout, this, &GameDetector::onPeriodicScanTriggered);
 
-	const QStringList ignoreSubstrings = {
-		"7z", "presentmon", "dxsetup", "errorreporter", "crashpad", "buildpatchtool", "redmod", "dotnet", "bepinex",
-		"vcredist", "vc_redist", "redist", "prereq", "crashreport", "swarm", "unrealpak", "bink2", "bootstrap",
-		"shadercompile", "epicwebhelper", "svn", "python", "dumpmini", "datacollector", "testhost", "unrealgame",
-		"shipping"
-	};
-	for (const QString& str : ignoreSubstrings) {
+	const QStringList ignoreSubstrings = {"7z",       "presentmon",     "dxsetup",       "errorreporter",
+					      "crashpad", "buildpatchtool", "redmod",        "dotnet",
+					      "bepinex",  "vcredist",       "vc_redist",     "redist",
+					      "prereq",   "crashreport",    "swarm",         "unrealpak",
+					      "bink2",    "bootstrap",      "shadercompile", "epicwebhelper",
+					      "svn",      "python",         "dumpmini",      "datacollector",
+					      "testhost", "unrealgame",     "shipping"};
+	for (const QString &str : ignoreSubstrings) {
 		ignoreSubstringsSet.insert(str);
 	}
 }
@@ -84,7 +85,6 @@ void GameDetector::onGameScanFinished()
 	blog(LOG_INFO, "[GameDetector] Game scan completed. Starting process monitoring.");
 
 	emit automaticScanFinished(gameDbWatcher->result());
-
 }
 
 void GameDetector::onSettingsChanged()
@@ -151,39 +151,149 @@ void GameDetector::stopScanning()
 	}
 }
 
-const QSet<QString> ignoreFullNames = {
-	"7za.exe", "compatibility.exe", "ispc.exe", "openssl.exe", "scc.exe",
-	"interchangeworker.exe", "zen.exe", "applicationframehost.exe", "shellexperiencehost.exe",
-	"ndp462-kb3151800-x86-x64-allos-enu.exe", "ndp472-kb4054530-x86-x64-allos-enu.exe",
-	"ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe"
-	"eaanticheat.installer.exe", "common.extprotocol.executor.exe", "eztransxp.extprotocol.exe",
-	"lec.extprotocol.exe", "unrealandroidfiletool.exe", "unrealbuildtool.exe", "automationtool.exe",
-	"csvcollate.exe", "csvconvert.exe", "csvfilter.exe", "csvinfo.exe", "csvsplit.exe", "csvtosvg.exe",
-	"perfreporttool.exe", "regressionsreport.exe", "iphonepackager.exe", "networkprofiler.exe", "oidctoken.exe",
-	"swarmagent.exe", "swarmcoordinator.exe", "containerize.exe",
-	"microsoft.codeanalysis.workspaces.msbuild.buildhost.exe", "createdump.exe", "plink.exe", "pscp.exe",
-	"putty.exe", "node-bifrost.exe", "datasmithcadworker.exe", "hhc.exe", "apphost.exe",
-	"livecodingconsole.exe", "livelinkhub.exe", "switchboardlistener.exe", "switchboardlistenerhelper.exe",
-	"unrealeditor-cmd.exe", "unrealeditor-win64-debuggame-cmd.exe", "unrealeditor-win64-debuggame.exe",
-	"unrealeditor.exe", "unrealfrontend.exe", "unrealinsights.exe", "unreallightmass.exe",
-	"unrealmultiuserserver.exe", "unrealmultiuserslateserver.exe", "unrealobjectptrtool.exe",
-	"unrealpackagetool.exe", "unrealrecoverysvc.exe", "unrealtraceserver.exe", "xgecontrolworker.exe",
-	"zendashboard.exe", "zenserver.exe", "ubaagent.exe", "ubacacheservice.exe", "ubacli.exe", "ubaobjtool.exe",
-	"ubastorageproxy.exe", "ubatest.exe", "ubatestapp.exe", "ubavisualizer.exe", "unitycrashhandler64.exe",
-	"unitycrashhandler32.exe", "egodumper.exe", "mod_tools.exe", "steamworksexample.exe", "singlefilehost.exe",
-	"t32.exe", "t64.exe", "t64-arm.exe", "w32.exe", "w64.exe", "w64-arm.exe", "cli.exe", "cli-32.exe",
-	"cli-64.exe", "cli-arm64.exe", "gui.exe", "gui-32.exe", "gui-64.exe", "gui-arm64.exe", "pip.exe", "pip3.exe",
-	"pip3.11.exe", "x86_64-w64-mingw32-nmakehlp.exe", "diff.exe", "diff3.exe", "diff4.exe", "cl-filter.exe",
-	"d2u.exe", "u2d.exe", "rsync.exe", "ssh.exe", "ssh-agent.exe", "ssh-keygen.exe", "ideviceactivation.exe",
-	"idevicebackup.exe", "idevicebackup2.exe", "idevicedate.exe", "idevicedebug.exe",
-	"idevicedebugserverproxy.exe", "idevicediagnostics.exe", "ideviceenterrecovery.exe", "idevicefs.exe",
-	"ideviceimagemounter.exe", "ideviceinfo.exe", "ideviceinstaller.exe", "idevicename.exe",
-	"idevicenotificationproxy.exe", "idevicepair.exe", "ideviceprovision.exe", "idevicerestore.exe",
-	"idevicescreenshot.exe", "idevicesyslog.exe", "idevice_id.exe", "ios_webkit_debug_proxy.exe", "iproxy.exe",
-	"irecovery.exe", "itcpconnect.exe", "plistutil.exe", "plist_cmp.exe", "plist_test.exe", "usbmuxd.exe",
-	"clang++.exe", "iree-compile.exe", "ld.lld.exe", "torch-mlir-import-onnx.exe", "interlacedcapture.exe",
-	"timecodeburner.exe", "timecodecapture.exe", "arcoreimg.exe", "sqlite3.exe", "recast.exe"
-};
+const QSet<QString> ignoreFullNames = {"7za.exe",
+				       "compatibility.exe",
+				       "ispc.exe",
+				       "openssl.exe",
+				       "scc.exe",
+				       "interchangeworker.exe",
+				       "zen.exe",
+				       "applicationframehost.exe",
+				       "shellexperiencehost.exe",
+				       "ndp462-kb3151800-x86-x64-allos-enu.exe",
+				       "ndp472-kb4054530-x86-x64-allos-enu.exe",
+				       "ue4prereqsetup_x64.exe",
+				       "ueprereqsetup_x64.exe"
+				       "eaanticheat.installer.exe",
+				       "common.extprotocol.executor.exe",
+				       "eztransxp.extprotocol.exe",
+				       "lec.extprotocol.exe",
+				       "unrealandroidfiletool.exe",
+				       "unrealbuildtool.exe",
+				       "automationtool.exe",
+				       "csvcollate.exe",
+				       "csvconvert.exe",
+				       "csvfilter.exe",
+				       "csvinfo.exe",
+				       "csvsplit.exe",
+				       "csvtosvg.exe",
+				       "perfreporttool.exe",
+				       "regressionsreport.exe",
+				       "iphonepackager.exe",
+				       "networkprofiler.exe",
+				       "oidctoken.exe",
+				       "swarmagent.exe",
+				       "swarmcoordinator.exe",
+				       "containerize.exe",
+				       "microsoft.codeanalysis.workspaces.msbuild.buildhost.exe",
+				       "createdump.exe",
+				       "plink.exe",
+				       "pscp.exe",
+				       "putty.exe",
+				       "node-bifrost.exe",
+				       "datasmithcadworker.exe",
+				       "hhc.exe",
+				       "apphost.exe",
+				       "livecodingconsole.exe",
+				       "livelinkhub.exe",
+				       "switchboardlistener.exe",
+				       "switchboardlistenerhelper.exe",
+				       "unrealeditor-cmd.exe",
+				       "unrealeditor-win64-debuggame-cmd.exe",
+				       "unrealeditor-win64-debuggame.exe",
+				       "unrealeditor.exe",
+				       "unrealfrontend.exe",
+				       "unrealinsights.exe",
+				       "unreallightmass.exe",
+				       "unrealmultiuserserver.exe",
+				       "unrealmultiuserslateserver.exe",
+				       "unrealobjectptrtool.exe",
+				       "unrealpackagetool.exe",
+				       "unrealrecoverysvc.exe",
+				       "unrealtraceserver.exe",
+				       "xgecontrolworker.exe",
+				       "zendashboard.exe",
+				       "zenserver.exe",
+				       "ubaagent.exe",
+				       "ubacacheservice.exe",
+				       "ubacli.exe",
+				       "ubaobjtool.exe",
+				       "ubastorageproxy.exe",
+				       "ubatest.exe",
+				       "ubatestapp.exe",
+				       "ubavisualizer.exe",
+				       "unitycrashhandler64.exe",
+				       "unitycrashhandler32.exe",
+				       "egodumper.exe",
+				       "mod_tools.exe",
+				       "steamworksexample.exe",
+				       "singlefilehost.exe",
+				       "t32.exe",
+				       "t64.exe",
+				       "t64-arm.exe",
+				       "w32.exe",
+				       "w64.exe",
+				       "w64-arm.exe",
+				       "cli.exe",
+				       "cli-32.exe",
+				       "cli-64.exe",
+				       "cli-arm64.exe",
+				       "gui.exe",
+				       "gui-32.exe",
+				       "gui-64.exe",
+				       "gui-arm64.exe",
+				       "pip.exe",
+				       "pip3.exe",
+				       "pip3.11.exe",
+				       "x86_64-w64-mingw32-nmakehlp.exe",
+				       "diff.exe",
+				       "diff3.exe",
+				       "diff4.exe",
+				       "cl-filter.exe",
+				       "d2u.exe",
+				       "u2d.exe",
+				       "rsync.exe",
+				       "ssh.exe",
+				       "ssh-agent.exe",
+				       "ssh-keygen.exe",
+				       "ideviceactivation.exe",
+				       "idevicebackup.exe",
+				       "idevicebackup2.exe",
+				       "idevicedate.exe",
+				       "idevicedebug.exe",
+				       "idevicedebugserverproxy.exe",
+				       "idevicediagnostics.exe",
+				       "ideviceenterrecovery.exe",
+				       "idevicefs.exe",
+				       "ideviceimagemounter.exe",
+				       "ideviceinfo.exe",
+				       "ideviceinstaller.exe",
+				       "idevicename.exe",
+				       "idevicenotificationproxy.exe",
+				       "idevicepair.exe",
+				       "ideviceprovision.exe",
+				       "idevicerestore.exe",
+				       "idevicescreenshot.exe",
+				       "idevicesyslog.exe",
+				       "idevice_id.exe",
+				       "ios_webkit_debug_proxy.exe",
+				       "iproxy.exe",
+				       "irecovery.exe",
+				       "itcpconnect.exe",
+				       "plistutil.exe",
+				       "plist_cmp.exe",
+				       "plist_test.exe",
+				       "usbmuxd.exe",
+				       "clang++.exe",
+				       "iree-compile.exe",
+				       "ld.lld.exe",
+				       "torch-mlir-import-onnx.exe",
+				       "interlacedcapture.exe",
+				       "timecodeburner.exe",
+				       "timecodecapture.exe",
+				       "arcoreimg.exe",
+				       "sqlite3.exe",
+				       "recast.exe"};
 
 QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutables()
 {
@@ -194,10 +304,12 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 	knownGameExes.clear();
 	gameNameMap.clear();
 
-	if (abortScan) return foundGames;
+	if (abortScan)
+		return foundGames;
 
 	if (this->tempScanSteam) {
-		QSettings steamSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Valve\\Steam", QSettings::NativeFormat);
+		QSettings steamSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Valve\\Steam",
+					QSettings::NativeFormat);
 		QString steamPath = steamSettings.value("InstallPath").toString();
 		if (!steamPath.isEmpty()) {
 			QString libraryFile = steamPath + "/steamapps/libraryfolders.vdf";
@@ -217,19 +329,22 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 			}
 
 			for (const QString &library : libraryPaths) {
-				if (abortScan) break;
+				if (abortScan)
+					break;
 				if (!QDir(library).exists())
 					continue;
 
 				QDirIterator it(library, QDir::Dirs | QDir::NoDotAndDotDot);
 				while (it.hasNext()) {
-					if (abortScan) break;
+					if (abortScan)
+						break;
 					QString gameFolder = it.next();
 
 					QString exePath;
 					QString exeName;
 
-					QDirIterator rootIt(gameFolder, QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+					QDirIterator rootIt(gameFolder, QStringList() << "*.exe", QDir::Files,
+							    QDirIterator::NoIteratorFlags);
 					while (rootIt.hasNext()) {
 						QString candidate = rootIt.next();
 						QString candidateName = QFileInfo(candidate).fileName();
@@ -241,12 +356,16 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 					}
 
 					if (exePath.isEmpty()) {
-						const QStringList commonBinarySubfolders = {"bin", "Binaries/Win64", "Binaries/Win32", "x64", "x86"};
+						const QStringList commonBinarySubfolders = {
+							"bin", "Binaries/Win64", "Binaries/Win32", "x64", "x86"};
 						for (const QString &subfolder : commonBinarySubfolders) {
 							QDir subDir(gameFolder + "/" + subfolder);
-							if (!subDir.exists()) continue;
+							if (!subDir.exists())
+								continue;
 
-							QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+							QDirIterator subIt(subDir.absolutePath(),
+									   QStringList() << "*.exe", QDir::Files,
+									   QDirIterator::NoIteratorFlags);
 							while (subIt.hasNext()) {
 								QString candidate = subIt.next();
 								QString candidateName = QFileInfo(candidate).fileName();
@@ -263,7 +382,8 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 					}
 
 					if (exePath.isEmpty()) {
-						QDirIterator recursiveIt(gameFolder, QStringList() << "*.exe", QDir::Files, QDirIterator::Subdirectories);
+						QDirIterator recursiveIt(gameFolder, QStringList() << "*.exe",
+									 QDir::Files, QDirIterator::Subdirectories);
 						while (recursiveIt.hasNext()) {
 							QString candidate = recursiveIt.next();
 							QString candidateName = QFileInfo(candidate).fileName();
@@ -279,9 +399,11 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 						continue;
 
 					QDir gameDir = QFileInfo(exePath).dir();
-					const QSet<QString> binaryFolderNames = {"bin", "binaries", "win64", "win_x64", "x64", "shipping"};
-					while(binaryFolderNames.contains(gameDir.dirName().toLower())) {
-						if (!gameDir.cdUp()) break;
+					const QSet<QString> binaryFolderNames = {"bin",     "binaries", "win64",
+										 "win_x64", "x64",      "shipping"};
+					while (binaryFolderNames.contains(gameDir.dirName().toLower())) {
+						if (!gameDir.cdUp())
+							break;
 					}
 					QString friendlyName = gameDir.dirName();
 
@@ -298,11 +420,13 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 		}
 	}
 
-	if (abortScan) return foundGames;
+	if (abortScan)
+		return foundGames;
 
 	if (this->tempScanEpic) {
 		bool foundViaRegistry = false;
-		QSettings epicSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Epic Games\\EpicGamesLauncher", QSettings::NativeFormat);
+		QSettings epicSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Epic Games\\EpicGamesLauncher",
+				       QSettings::NativeFormat);
 		QString appDataPath = epicSettings.value("AppDataPath").toString();
 
 		if (!appDataPath.isEmpty()) {
@@ -310,7 +434,8 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 			QDirIterator it(manifestsDir, QStringList() << "*.item", QDir::Files);
 
 			while (it.hasNext()) {
-				if (abortScan) break;
+				if (abortScan)
+					break;
 				QString manifestPath = it.next();
 				QFile manifestFile(manifestPath);
 				if (manifestFile.open(QIODevice::ReadOnly)) {
@@ -324,11 +449,13 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 						QString installPath = obj["InstallLocation"].toString();
 						QString exePath = QDir::toNativeSeparators(installPath + "/" + exeName);
 
-						if (friendlyName.isEmpty() || exeName.isEmpty() || !QFileInfo::exists(exePath) || this->isExeIgnored(exeName)) {
+						if (friendlyName.isEmpty() || exeName.isEmpty() ||
+						    !QFileInfo::exists(exePath) || this->isExeIgnored(exeName)) {
 							continue;
 						}
 						if (!knownGameExes.contains(QFileInfo(exePath).fileName())) {
-							foundGames.append({friendlyName, QFileInfo(exePath).fileName(), exePath});
+							foundGames.append(
+								{friendlyName, QFileInfo(exePath).fileName(), exePath});
 							knownGameExes.insert(QFileInfo(exePath).fileName());
 							gameNameMap.insert(QFileInfo(exePath).fileName(), friendlyName);
 							emit gameFoundDuringScan(foundGames.size());
@@ -348,22 +475,31 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 				if (doc.isObject()) {
 					QJsonArray arr = doc.object()["InstallationList"].toArray();
 					for (const QJsonValue &v : arr) {
-						if (abortScan) break;
+						if (abortScan)
+							break;
 						QString installPath = v.toObject()["InstallLocation"].toString();
 						QString friendlyName = v.toObject()["DisplayName"].toString();
 
-						if (installPath.isEmpty() || !QDir(installPath).exists()) continue;
-						if (friendlyName.isEmpty()) friendlyName = QFileInfo(installPath).fileName();
+						if (installPath.isEmpty() || !QDir(installPath).exists())
+							continue;
+						if (friendlyName.isEmpty())
+							friendlyName = QFileInfo(installPath).fileName();
 
 						QString exePath;
 						QString exeName;
 
-						const QStringList commonBinarySubfolders = {"", "bin", "Binaries/Win64", "Binaries/Win32", "x64", "x86", "Shipping"};
+						const QStringList commonBinarySubfolders = {
+							"",    "bin", "Binaries/Win64", "Binaries/Win32",
+							"x64", "x86", "Shipping"};
 						for (const QString &subfolder : commonBinarySubfolders) {
-							QDir subDir(installPath + (subfolder.isEmpty() ? "" : "/" + subfolder));
-							if (!subDir.exists()) continue;
+							QDir subDir(installPath +
+								    (subfolder.isEmpty() ? "" : "/" + subfolder));
+							if (!subDir.exists())
+								continue;
 
-							QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+							QDirIterator subIt(subDir.absolutePath(),
+									   QStringList() << "*.exe", QDir::Files,
+									   QDirIterator::NoIteratorFlags);
 							while (subIt.hasNext()) {
 								QString candidate = subIt.next();
 								QString candidateName = QFileInfo(candidate).fileName();
@@ -373,7 +509,8 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 									break;
 								}
 							}
-							if (!exePath.isEmpty()) break;
+							if (!exePath.isEmpty())
+								break;
 						}
 
 						if (!exeName.isEmpty() && !knownGameExes.contains(exeName)) {
@@ -388,15 +525,18 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 		}
 	}
 
-	if (abortScan) return foundGames;
+	if (abortScan)
+		return foundGames;
 
 	if (this->tempScanGog) {
-		QSettings gogSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\GOG.com\\Games", QSettings::NativeFormat);
+		QSettings gogSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\GOG.com\\Games",
+				      QSettings::NativeFormat);
 
 		QStringList gameIds = gogSettings.childGroups();
 
 		for (const QString &gameId : gameIds) {
-			if (abortScan) break;
+			if (abortScan)
+				break;
 			gogSettings.beginGroup(gameId);
 
 			QString friendlyName = gogSettings.value("gameName").toString();
@@ -420,14 +560,17 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 		}
 	}
 
-	if (abortScan) return foundGames;
+	if (abortScan)
+		return foundGames;
 
 	if (this->tempScanUbisoft) {
-		QSettings ubiSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs", QSettings::NativeFormat);
+		QSettings ubiSettings("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs",
+				      QSettings::NativeFormat);
 		QStringList gameIds = ubiSettings.childGroups();
 
 		for (const QString &gameId : gameIds) {
-			if (abortScan) break;
+			if (abortScan)
+				break;
 			ubiSettings.beginGroup(gameId);
 
 			QString installPath = ubiSettings.value("InstallDir").toString();
@@ -449,9 +592,11 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 			const QStringList commonBinarySubfolders = {"", "bin", "bin_plus", "bin_x64"};
 			for (const QString &subfolder : commonBinarySubfolders) {
 				QDir subDir(installPath + (subfolder.isEmpty() ? "" : "/" + subfolder));
-				if (!subDir.exists()) continue;
+				if (!subDir.exists())
+					continue;
 
-				QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files, QDirIterator::NoIteratorFlags);
+				QDirIterator subIt(subDir.absolutePath(), QStringList() << "*.exe", QDir::Files,
+						   QDirIterator::NoIteratorFlags);
 				while (subIt.hasNext()) {
 					QString candidate = subIt.next();
 					QString candidateName = QFileInfo(candidate).fileName();
@@ -461,7 +606,8 @@ QList<std::tuple<QString, QString, QString>> GameDetector::populateGameExecutabl
 						break;
 					}
 				}
-				if (!exePath.isEmpty()) break;
+				if (!exePath.isEmpty())
+					break;
 			}
 
 			if (!exeName.isEmpty() && !knownGameExes.contains(exeName)) {
@@ -525,12 +671,14 @@ void GameDetector::mergeAndSaveGames(const QList<std::tuple<QString, QString, QS
 	if (addedCount > 0 || removedCount > 0) {
 		obs_data_set_array(settings, ConfigManager::MANUAL_GAMES_KEY, newGamesArray);
 		ConfigManager::get().save(settings);
-		blog(LOG_INFO, "[GameDetector] Added %d new games and removed %d uninstalled games.", addedCount, removedCount);
+		blog(LOG_INFO, "[GameDetector] Added %d new games and removed %d uninstalled games.", addedCount,
+		     removedCount);
 	}
 	obs_data_array_release(newGamesArray);
 }
 
-bool GameDetector::isExeIgnored(const QString &exeName) {
+bool GameDetector::isExeIgnored(const QString &exeName)
+{
 	const QString lowerExeName = exeName.toLower();
 
 	if (ignoreFullNames.contains(lowerExeName)) {
@@ -588,8 +736,10 @@ void GameDetector::scanProcesses()
 				DWORD cbNeeded;
 				if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeeded)) {
 					wchar_t processPath[MAX_PATH];
-					if (GetModuleFileNameExW(hProcess, hMod, processPath, sizeof(processPath) / sizeof(wchar_t))) {
-						QString processName = QFileInfo(QString::fromWCharArray(processPath)).fileName();
+					if (GetModuleFileNameExW(hProcess, hMod, processPath,
+								 sizeof(processPath) / sizeof(wchar_t))) {
+						QString processName =
+							QFileInfo(QString::fromWCharArray(processPath)).fileName();
 
 						if (knownGameExes.contains(processName)) {
 
@@ -600,7 +750,10 @@ void GameDetector::scanProcesses()
 							}
 							if (processName != currentGameProcess) {
 								currentGameProcess = processName;
-								blog(LOG_INFO, "[GameDetector] Game detected: %s (Process: %s)", friendlyName.toStdString().c_str(), processName.toStdString().c_str());
+								blog(LOG_INFO,
+								     "[GameDetector] Game detected: %s (Process: %s)",
+								     friendlyName.toStdString().c_str(),
+								     processName.toStdString().c_str());
 								emit gameDetected(friendlyName);
 							}
 							gameFoundThisScan = true;
@@ -616,7 +769,8 @@ void GameDetector::scanProcesses()
 
 cleanup:
 	if (!gameFoundThisScan && !currentGameProcess.isEmpty()) {
-		blog(LOG_INFO, "[GameDetector] Game '%s' is no longer running.", currentGameProcess.toStdString().c_str());
+		blog(LOG_INFO, "[GameDetector] Game '%s' is no longer running.",
+		     currentGameProcess.toStdString().c_str());
 		currentGameProcess.clear();
 		emit noGameDetected();
 	}
@@ -643,12 +797,13 @@ QString GameDetector::getFileDescription(const QString &filePath)
 	} *lpTranslate;
 
 	UINT cbTranslate = 0;
-	if (VerQueryValue(versionInfo.data(), TEXT("\\VarFileInfo\\Translation"), (LPVOID*)&lpTranslate, &cbTranslate)) {
+	if (VerQueryValue(versionInfo.data(), TEXT("\\VarFileInfo\\Translation"), (LPVOID *)&lpTranslate,
+			  &cbTranslate)) {
 		for (UINT i = 0; i < (cbTranslate / sizeof(struct LANGANDCODEPAGE)); i++) {
-			
+
 			QString subBlock = QString("\\StringFileInfo\\%1%2\\FileDescription")
-				.arg(lpTranslate[i].wLanguage, 4, 16, QChar('0'))
-				.arg(lpTranslate[i].wCodePage, 4, 16, QChar('0'));
+						   .arg(lpTranslate[i].wLanguage, 4, 16, QChar('0'))
+						   .arg(lpTranslate[i].wCodePage, 4, 16, QChar('0'));
 
 			LPVOID lpBuffer = nullptr;
 			UINT cbBufSize = 0;

@@ -24,28 +24,28 @@ public:
 
 private:
 	QPushButton *manageGamesButton = nullptr;
-	QPushButton *authButton      = nullptr;
+	QPushButton *authButton = nullptr;
 	QPushButton *disconnectButton = nullptr;
-	QPushButton *trovoAuthButton      = nullptr;
+	QPushButton *trovoAuthButton = nullptr;
 	QPushButton *trovoDisconnectButton = nullptr;
 	QPushButton *okButton = nullptr;
-	QLabel      *authTimerLabel = nullptr;
+	QLabel *authTimerLabel = nullptr;
 	QPushButton *cancelButton = nullptr;
-	QLabel      *commandLabel = nullptr;
-	QLineEdit   *commandInput = nullptr;
-	QLabel      *noGameCommandLabel = nullptr;
-	QLineEdit   *noGameCommandInput = nullptr;
-	QLabel 		*delayLabel = nullptr;
-	QSpinBox 	*delaySpinBox = nullptr;
-	QComboBox   *actionComboBox = nullptr;
-	QCheckBox   *unifiedAuthCheckbox = nullptr;
-	QCheckBox   *scanSteamCheckbox = nullptr;
-	QCheckBox   *scanEpicCheckbox = nullptr;
-	QCheckBox   *scanGogCheckbox = nullptr;
-	QCheckBox   *scanUbiCheckbox = nullptr;
-	QCheckBox   *scanOnStartupCheckbox = nullptr;
-	QCheckBox   *scanPeriodicallyCheckbox = nullptr;
-	QSpinBox    *scanIntervalSpinbox = nullptr;
+	QLabel *commandLabel = nullptr;
+	QLineEdit *commandInput = nullptr;
+	QLabel *noGameCommandLabel = nullptr;
+	QLineEdit *noGameCommandInput = nullptr;
+	QLabel *delayLabel = nullptr;
+	QSpinBox *delaySpinBox = nullptr;
+	QComboBox *actionComboBox = nullptr;
+	QCheckBox *unifiedAuthCheckbox = nullptr;
+	QCheckBox *scanSteamCheckbox = nullptr;
+	QCheckBox *scanEpicCheckbox = nullptr;
+	QCheckBox *scanGogCheckbox = nullptr;
+	QCheckBox *scanUbiCheckbox = nullptr;
+	QCheckBox *scanOnStartupCheckbox = nullptr;
+	QCheckBox *scanPeriodicallyCheckbox = nullptr;
+	QSpinBox *scanIntervalSpinbox = nullptr;
 
 private slots:
 	void onAuthenticationFinished(bool success, const QString &username);

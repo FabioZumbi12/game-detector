@@ -18,10 +18,11 @@ private:
 	static constexpr const char *COMMAND_KEY = "twitch_command_message";
 	static constexpr const char *COMMAND_NO_GAME_KEY = "twitch_command_no_game";
 	static constexpr const char *EXECUTE_AUTOMATICALLY_KEY = "execute_automatically";
+	static constexpr const char *BLOCK_AUTO_UPDATE_WHILE_STREAMING_KEY = "block_auto_update_while_streaming";
 	static constexpr const char *ACTION_MODE_KEY = "twitch_action_mode";
 	static constexpr const char *TWITCH_UNIFIED_AUTH_KEY = "twitch_unified_auth";
 	static constexpr const char *TWITCH_CHANNEL_LOGIN_KEY = "twitch_channel_login";
-	
+
 	obs_data_t *settings = nullptr;
 
 	explicit ConfigManager(QObject *parent = nullptr);
@@ -50,6 +51,7 @@ public:
 	obs_data_array_t *getManualGames() const;
 	QString getNoGameCommand() const;
 	bool getExecuteAutomatically() const;
+	bool getBlockAutoUpdateWhileStreaming() const;
 	int getActionMode() const;
 	QString getTwitchChannelLogin() const;
 	bool getUnifiedAuth() const;
@@ -70,7 +72,6 @@ public:
 	void setTwitchChannelLogin(const QString &value);
 	int getActionDelay() const;
 
-
 	static constexpr const char *SCAN_STEAM_KEY = "scan_steam";
 	static constexpr const char *SCAN_EPIC_KEY = "scan_epic";
 	static constexpr const char *SCAN_GOG_KEY = "scan_gog";
@@ -80,7 +81,6 @@ public:
 	static constexpr const char *SCAN_PERIODICALLY_KEY = "scan_periodically";
 	static constexpr const char *SCAN_PERIODICALLY_INTERVAL_KEY = "scan_periodically_interval";
 	static constexpr const char *ACTION_DELAY_KEY = "twitch_action_delay";
-
 
 signals:
 	void settingsSaved();

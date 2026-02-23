@@ -19,11 +19,7 @@ class TwitchAuthManager : public QObject {
 	Q_OBJECT
 
 public:
-	enum UpdateResult {
-		Failed,
-		Success,
-		AuthError
-	};
+	enum UpdateResult { Failed, Success, AuthError };
 
 public:
 	static TwitchAuthManager &get()
@@ -66,8 +62,10 @@ private:
 	~TwitchAuthManager();
 
 	QFuture<std::pair<long, QString>> performGET(const QString &url, const QString &token);
-	QFuture<std::pair<long, QString>> performPATCH(const QString &url, const QJsonObject &body, const QString &token);
-	QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body, const QString &token);
+	QFuture<std::pair<long, QString>> performPATCH(const QString &url, const QJsonObject &body,
+						       const QString &token);
+	QFuture<std::pair<long, QString>> performPOST(const QString &url, const QJsonObject &body,
+						      const QString &token);
 
 	std::pair<long, QString> performGETSync(const QString &url, const QString &token);
 	std::pair<long, QString> performPATCHSync(const QString &url, const QJsonObject &body, const QString &token);

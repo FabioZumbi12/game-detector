@@ -2,9 +2,9 @@
 #  This CMake configuration file sets up the build process for the OBS Game Detector plugin.
 #  It includes options for enabling the obs-frontend-api and Qt functionalities,
 #  and specifies custom output directories for the built plugin and its associated data.
-#  
+#
 #  ✅ Compatible with OBS 28.0+ (Qt5 for OBS 28-29, Qt6 for OBS 30+)
-#  
+#
 #  If the build fail (the folder build_x64 don't exists), run on terminal: cmake --preset windows-x64
 #
 #  For buils on github, push tags:
@@ -12,6 +12,8 @@
 #  - git push origin --tags
 #  Build:
 #  - cmake --build build_x64 --config RelWithDebInfo --target GameDetector
+#  Check Clang/Gersemi formating:
+#  - pre-commit run --all-files --show-diff-on-failure
 cmake_minimum_required(VERSION 3.28...3.30)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
@@ -43,23 +45,16 @@ file(MAKE_DIRECTORY "${SETUP_DATA_DIR}")
 
 set(SETUP_ZIP "${CMAKE_SOURCE_DIR}/setup/GameDetector.zip")
 
-add_custom_command(TARGET GameDetector POST_BUILD
-
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:GameDetector>
-        "${SETUP_PLUGINS_DIR}/$<TARGET_FILE_NAME:GameDetector>"
-
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/data"
-        "${SETUP_DATA_DIR}"
-
-    COMMAND ${CMAKE_COMMAND} -E tar cfv "${SETUP_ZIP}" --format=zip
-        "obs-plugins"
-        "data"
-
-    WORKING_DIRECTORY "${SETUP_ROOT}"
-
-    COMMENT "Empacotando arquivos do plugin..."
+add_custom_command(
+  TARGET GameDetector
+  POST_BUILD
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:GameDetector>
+    "${SETUP_PLUGINS_DIR}/$<TARGET_FILE_NAME:GameDetector>"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/data" "${SETUP_DATA_DIR}"
+  COMMAND ${CMAKE_COMMAND} -E tar cfv "${SETUP_ZIP}" --format=zip "obs-plugins" "data"
+  WORKING_DIRECTORY "${SETUP_ROOT}"
+  COMMENT "Empacotando arquivos do plugin..."
 )
 
 # https://files.jrsoftware.org/is/6/innosetup-6.6.0.exe
@@ -67,14 +62,16 @@ add_custom_command(TARGET GameDetector POST_BUILD
 set(INNO_SETUP_COMPILER "C:/Program Files (x86)/Inno Setup 6/ISCC.exe")
 
 if(ENABLE_INNO_SETUP)
-        add_custom_command(TARGET GameDetector POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E echo "Executando Inno Setup..."
-        COMMAND "${INNO_SETUP_COMPILER}" "${CMAKE_SOURCE_DIR}/setup.iss"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        COMMENT "Criando instalador GameDetector-Setup.exe (opcional)..."
-    )
+  add_custom_command(
+    TARGET GameDetector
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "Executando Inno Setup..."
+    COMMAND "${INNO_SETUP_COMPILER}" "${CMAKE_SOURCE_DIR}/setup.iss"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "Criando instalador GameDetector-Setup.exe (opcional)..."
+  )
 else()
-    message(STATUS "Inno Setup desabilitado ou nao encontrado. Ignorando criacao do instalador.")
+  message(STATUS "Inno Setup desabilitado ou nao encontrado. Ignorando criacao do instalador.")
 endif()
 
 if(ENABLE_FRONTEND_API)
@@ -106,13 +103,12 @@ if(ENABLE_QT)
 endif()
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        psapi
-        version
-    )
+  target_link_libraries(${PROJECT_NAME} PRIVATE psapi version)
 endif()
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+target_sources(
+  ${CMAKE_PROJECT_NAME}
+  PRIVATE
     "src/plugin-main.cpp"
     "src/GameDetectorDock.cpp"
     "src/ConfigManager.cpp"
@@ -125,6 +121,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/GameListDialog.cpp"
     "src/TwitchServiceAdapter.cpp"
     "src/IPlatformService.h"
-    )
+)
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME "game-detector")

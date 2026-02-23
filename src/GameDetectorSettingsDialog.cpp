@@ -116,7 +116,7 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	actionComboBox->addItem(obs_module_text("Settings.PlatformAction.SendCommand"), 0);
 	actionComboBox->addItem(obs_module_text("Settings.PlatformAction.ChangeCategory"), 1);
 	actionComboBoxLayout->addWidget(actionComboBox);
-	
+
 	unifiedAuthCheckbox = new QCheckBox(obs_module_text("Settings.UnifiedAuth"));
 	unifiedAuthCheckbox->setToolTip(obs_module_text("Settings.UnifiedAuth.Tooltip"));
 	actionComboBoxLayout->addWidget(unifiedAuthCheckbox);
@@ -141,9 +141,8 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 	delaySpinBox->setSuffix(obs_module_text("Settings.Seconds"));
 	actionLayout->addRow(delayLabel, delaySpinBox);
 
-	connect(actionComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
-		disconectOnChangeComboBox(index);
-	});
+	connect(actionComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+		[this](int index) { disconectOnChangeComboBox(index); });
 	connect(unifiedAuthCheckbox, &QCheckBox::checkStateChanged, this, [this](int state) {
 		Q_UNUSED(state);
 		disconectOnChangeComboBox(actionComboBox->currentIndex());
@@ -173,10 +172,12 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 
 	connect(manageGamesButton, &QPushButton::clicked, this, &GameDetectorSettingsDialog::onManageGamesClicked);
 	connect(authButton, &QPushButton::clicked, this, [this]() {
-		TwitchAuthManager::get().startAuthentication(actionComboBox->currentIndex(), unifiedAuthCheckbox->isChecked() ? 1 : 0);
+		TwitchAuthManager::get().startAuthentication(actionComboBox->currentIndex(),
+							     unifiedAuthCheckbox->isChecked() ? 1 : 0);
 	});
 	connect(disconnectButton, &QPushButton::clicked, this, &GameDetectorSettingsDialog::onDisconnectClicked);
-	connect(&TwitchAuthManager::get(), &TwitchAuthManager::authenticationFinished, this, &GameDetectorSettingsDialog::onAuthenticationFinished);
+	connect(&TwitchAuthManager::get(), &TwitchAuthManager::authenticationFinished, this,
+		&GameDetectorSettingsDialog::onAuthenticationFinished);
 	connect(&TwitchAuthManager::get(), &TwitchAuthManager::authenticationTimerTick, this, [this](int remaining) {
 		if (remaining > 0)
 			authTimerLabel->setText(QString("Timeout: %1s").arg(remaining));
@@ -184,13 +185,16 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 			authTimerLabel->setText("");
 	});
 
-	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager*>();
+	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager *>();
 	if (trovoManager) {
 		connect(trovoAuthButton, &QPushButton::clicked, this, [this, trovoManager]() {
-			trovoManager->startAuthentication(actionComboBox->currentIndex(), unifiedAuthCheckbox->isChecked() ? 1 : 0);
+			trovoManager->startAuthentication(actionComboBox->currentIndex(),
+							  unifiedAuthCheckbox->isChecked() ? 1 : 0);
 		});
-		connect(trovoDisconnectButton, &QPushButton::clicked, this, &GameDetectorSettingsDialog::onTrovoDisconnectClicked);
-		connect(trovoManager, &TrovoAuthManager::authenticationFinished, this, &GameDetectorSettingsDialog::onTrovoAuthenticationFinished);
+		connect(trovoDisconnectButton, &QPushButton::clicked, this,
+			&GameDetectorSettingsDialog::onTrovoDisconnectClicked);
+		connect(trovoManager, &TrovoAuthManager::authenticationFinished, this,
+			&GameDetectorSettingsDialog::onTrovoAuthenticationFinished);
 		connect(trovoManager, &TrovoAuthManager::authenticationTimerTick, this, [this](int remaining) {
 			if (remaining > 0)
 				authTimerLabel->setText(QString("Timeout: %1s").arg(remaining));
@@ -210,10 +214,8 @@ GameDetectorSettingsDialog::GameDetectorSettingsDialog(QWidget *parent) : QDialo
 
 	loadSettings();
 
-	connect(scanPeriodicallyCheckbox, &QCheckBox::checkStateChanged, this, [this](int state) {
-		scanIntervalSpinbox->setEnabled(state == Qt::Checked);
-	});
-
+	connect(scanPeriodicallyCheckbox, &QCheckBox::checkStateChanged, this,
+		[this](int state) { scanIntervalSpinbox->setEnabled(state == Qt::Checked); });
 }
 
 void GameDetectorSettingsDialog::loadSettings()
@@ -227,7 +229,7 @@ void GameDetectorSettingsDialog::loadSettings()
 		onAuthenticationFinished(false, "");
 	}
 
-	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager*>();
+	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager *>();
 	if (trovoManager && trovoManager->isAuthenticated()) {
 		QString trovoLogin = ConfigManager::get().getTrovoChannelLogin();
 		onTrovoAuthenticationFinished(true, trovoLogin.isEmpty() ? "Connected" : trovoLogin);
@@ -318,7 +320,8 @@ void GameDetectorSettingsDialog::onAuthenticationFinished(bool success, const QS
 		disconnectButton->setVisible(false);
 		unifiedAuthCheckbox->setEnabled(true);
 		if (!username.isEmpty()) {
-			blog(LOG_WARNING, "[GameDetector/Auth] Authentication failed: %s", username.toStdString().c_str());
+			blog(LOG_WARNING, "[GameDetector/Auth] Authentication failed: %s",
+			     username.toStdString().c_str());
 		}
 	}
 }
@@ -334,7 +337,8 @@ void GameDetectorSettingsDialog::onTrovoAuthenticationFinished(bool success, con
 		trovoDisconnectButton->setVisible(false);
 		unifiedAuthCheckbox->setEnabled(true);
 		if (!username.isEmpty()) {
-			blog(LOG_WARNING, "[GameDetector/Auth] Authentication failed: %s", username.toStdString().c_str());
+			blog(LOG_WARNING, "[GameDetector/Auth] Authentication failed: %s",
+			     username.toStdString().c_str());
 		}
 	}
 }
@@ -353,10 +357,11 @@ void GameDetectorSettingsDialog::onTrovoDisconnectClicked()
 	ConfigManager::get().setTrovoUserId("");
 	ConfigManager::get().setTrovoChannelLogin("");
 	ConfigManager::get().save(settings);
-	
-	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager*>();
-	if (trovoManager) trovoManager->loadToken();
-	
+
+	auto trovoManager = PlatformManager::get().findChild<TrovoAuthManager *>();
+	if (trovoManager)
+		trovoManager->loadToken();
+
 	onTrovoAuthenticationFinished(false, "");
 }
 

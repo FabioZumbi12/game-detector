@@ -37,6 +37,7 @@ private:
 	QString getFileDescription(const QString &filePath);
 
 	bool isExeIgnored(const QString &exeName);
+
 public:
 	static GameDetector &get();
 
@@ -55,7 +56,6 @@ signals:
 	void noGameDetected();
 	void automaticScanFinished(const QList<std::tuple<QString, QString, QString>> &foundGames);
 	void gameFoundDuringScan(int totalFound);
-
 
 private slots:
 	void scanProcesses();

@@ -34,11 +34,10 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 
 	manualGamesTable = new QTableWidget();
 	manualGamesTable->setColumnCount(5);
-	manualGamesTable->setHorizontalHeaderLabels(QStringList() << ""
-								<< obs_module_text("Table.Header.Name")
-								<< obs_module_text("Table.Header.Executable")
-								<< obs_module_text("Table.Header.Path")
-								<< obs_module_text("Table.Header.Actions"));
+	manualGamesTable->setHorizontalHeaderLabels(QStringList() << "" << obs_module_text("Table.Header.Name")
+								  << obs_module_text("Table.Header.Executable")
+								  << obs_module_text("Table.Header.Path")
+								  << obs_module_text("Table.Header.Actions"));
 	manualGamesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 	manualGamesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
 	manualGamesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
@@ -69,7 +68,7 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 	QHBoxLayout *dialogButtonsLayout = new QHBoxLayout();
 	okButton = new QPushButton(obs_module_text("OK"));
 	cancelButton = new QPushButton(obs_module_text("Cancel"));
-    QLabel *developerLabel = new QLabel(
+	QLabel *developerLabel = new QLabel(
 		"<a href=\"https://github.com/FabioZumbi12\" style=\"color: gray; text-decoration: none;\"><i>Developed by FabioZumbi12</i></a>");
 	developerLabel->setOpenExternalLinks(true);
 	dialogButtonsLayout->addStretch(1);
@@ -93,7 +92,7 @@ GameListDialog::GameListDialog(GameDetectorSettingsDialog *parent) : QDialog(par
 		accept();
 	});
 
-    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+	connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 
 	loadGames();
 }
@@ -127,7 +126,7 @@ void GameListDialog::loadGames()
 			QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
 			checkboxLayout->addWidget(enabledCheckbox);
 			checkboxLayout->setAlignment(Qt::AlignCenter);
-			checkboxLayout->setContentsMargins(0,0,0,0);
+			checkboxLayout->setContentsMargins(0, 0, 0, 0);
 			manualGamesTable->setCellWidget(newRow, 0, checkboxWidget);
 
 			QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
@@ -162,8 +161,8 @@ void GameListDialog::saveGames()
 
 	obs_data_array_t *gamesArray = obs_data_array_create();
 	for (int i = 0; i < manualGamesTable->rowCount(); ++i) {
-		QWidget* cellWidget = manualGamesTable->cellWidget(i, 0);
-		QCheckBox* checkbox = cellWidget ? cellWidget->findChild<QCheckBox*>() : nullptr;
+		QWidget *cellWidget = manualGamesTable->cellWidget(i, 0);
+		QCheckBox *checkbox = cellWidget ? cellWidget->findChild<QCheckBox *>() : nullptr;
 
 		obs_data_t *item = obs_data_create();
 		obs_data_set_bool(item, "enabled", checkbox ? checkbox->isChecked() : true);
@@ -183,7 +182,8 @@ void GameListDialog::saveGames()
 
 void GameListDialog::onAddGameClicked()
 {
-	QString filePath = QFileDialog::getOpenFileName(this, obs_module_text("GameList.SelectExe.Title"), "", obs_module_text("GameList.SelectExe.Filter"));
+	QString filePath = QFileDialog::getOpenFileName(this, obs_module_text("GameList.SelectExe.Title"), "",
+							obs_module_text("GameList.SelectExe.Filter"));
 	if (filePath.isEmpty()) {
 		return;
 	}
@@ -211,7 +211,7 @@ void GameListDialog::onAddGameClicked()
 	QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
 	checkboxLayout->addWidget(enabledCheckbox);
 	checkboxLayout->setAlignment(Qt::AlignCenter);
-	checkboxLayout->setContentsMargins(0,0,0,0);
+	checkboxLayout->setContentsMargins(0, 0, 0, 0);
 	manualGamesTable->setCellWidget(newRow, 0, checkboxWidget);
 
 	QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);
@@ -284,7 +284,7 @@ void GameListDialog::onAutomaticScanFinished(const QList<std::tuple<QString, QSt
 		QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
 		checkboxLayout->addWidget(enabledCheckbox);
 		checkboxLayout->setAlignment(Qt::AlignCenter);
-		checkboxLayout->setContentsMargins(0,0,0,0);
+		checkboxLayout->setContentsMargins(0, 0, 0, 0);
 		manualGamesTable->setCellWidget(newRow, 0, checkboxWidget);
 
 		QTableWidgetItem *nameItem = new QTableWidgetItem(gameName);

@@ -16,7 +16,7 @@ class GameDetectorSettingsDialog;
 class GameDetectorDock : public QWidget {
 	Q_OBJECT
 
-private: 
+private:
 	QLabel *statusLabel = nullptr;
 	QLabel *twitchStatusLabel = nullptr;
 	QLabel *twitchPlatformLabel = nullptr;
@@ -30,6 +30,7 @@ private:
 	QPushButton *settingsButton = nullptr;
 	GameDetectorSettingsDialog *settingsDialog = nullptr;
 	QCheckBox *autoExecuteCheckbox = nullptr;
+	QCheckBox *blockAutoUpdateWhileStreamingCheckbox = nullptr;
 	QTimer *cooldownUpdateTimer = nullptr;
 
 	QString configPath;
@@ -38,13 +39,13 @@ private:
 	QString desiredTitle = QString();
 	QString lastTwitchTitle = QString();
 	QString lastTrovoTitle = QString();
- 
+
 	void restoreStatusLabel();
 	void onCooldownStarted(int seconds);
 	void onCooldownFinished();
 	void updateCooldownLabel();
-	
-	QTimer *saveDelayTimer = nullptr; 
+
+	QTimer *saveDelayTimer = nullptr;
 	QTimer *statusCheckTimer = nullptr;
 
 public:
