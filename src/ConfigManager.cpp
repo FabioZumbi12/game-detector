@@ -1,4 +1,4 @@
-﻿#include "ConfigManager.h"
+#include "ConfigManager.h"
 #include <obs-data.h>
 #include <obs-module.h>
 #include <QFileInfo>
@@ -367,35 +367,49 @@ int ConfigManager::getActionDelay() const
 
 void ConfigManager::setTwitchToken(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TWITCH_TOKEN_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTwitchRefreshToken(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TWITCH_REFRESH_TOKEN_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTwitchUserId(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TWITCH_USER_ID_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTrovoToken(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TROVO_TOKEN_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTrovoUserId(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TROVO_USER_ID_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTrovoChannelLogin(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TROVO_CHANNEL_LOGIN_KEY, value.toUtf8().constData());
 }
 
 void ConfigManager::setTwitchChannelLogin(const QString &value)
 {
+	if (!settings)
+		return;
 	obs_data_set_string(settings, TWITCH_CHANNEL_LOGIN_KEY, value.toUtf8().constData());
 }

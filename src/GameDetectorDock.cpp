@@ -1,4 +1,4 @@
-﻿#include "GameDetectorDock.h"
+#include "GameDetectorDock.h"
 #include "GameDetector.h"
 #include "PlatformManager.h"
 #include "TwitchAuthManager.h"

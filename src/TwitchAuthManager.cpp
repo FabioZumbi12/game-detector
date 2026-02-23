@@ -1,4 +1,4 @@
-﻿#include "TwitchAuthManager.h"
+#include "TwitchAuthManager.h"
 #include "ConfigManager.h"
 #include "NetworkCommon.h"
 
@@ -14,6 +14,7 @@
 #include <QUrlQuery>
 #include <QJsonArray>
 #include <QTimer>
+#include <QCoreApplication>
 
 static const QString SVG_SUCCESS =
 	"<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24' fill='none' stroke='#4caf50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'></path><polyline points='22 4 12 14.01 9 11.01'></polyline></svg>";
@@ -75,6 +76,10 @@ TwitchAuthManager::~TwitchAuthManager()
 
 void TwitchAuthManager::shutdown()
 {
+	QObject::disconnect(this, &TwitchAuthManager::authenticationDataNeedsClearing, this,
+			    &TwitchAuthManager::clearAuthentication);
+	QCoreApplication::removePostedEvents(this);
+
 	if (authTimeoutTimer && authTimeoutTimer->isActive()) {
 		authTimeoutTimer->stop();
 	}
@@ -85,11 +90,12 @@ void TwitchAuthManager::shutdown()
 
 	for (auto sock : clientSockets) {
 		if (sock) {
+			QObject::disconnect(sock, nullptr, this, nullptr);
 			if (sock->isOpen()) {
 				sock->disconnectFromHost();
 				sock->close();
 			}
-			sock->deleteLater();
+			delete sock;
 		}
 	}
 	clientSockets.clear();
@@ -155,6 +161,9 @@ void TwitchAuthManager::clearAuthentication()
 {
 	accessToken.clear();
 	userId.clear();
+	if (!ConfigManager::get().getSettings()) {
+		return;
+	}
 	ConfigManager::get().setTwitchToken("");
 	ConfigManager::get().setTwitchUserId("");
 	ConfigManager::get().setTwitchChannelLogin("");

@@ -1,8 +1,8 @@
-﻿#include <obs-module.h>
+#include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <QMainWindow>
 #include <QObject>
-#include <QCoreApplication>
+#include <QPointer>
 #include <obs-module.h>
 
 #include "ConfigManager.h"
@@ -16,7 +16,7 @@
 static obs_hotkey_id g_set_game_hotkey_id;
 static obs_hotkey_id g_rescan_games_hotkey_id;
 static obs_hotkey_id g_set_just_chatting_hotkey_id;
-static GameDetectorDock *g_dock_widget = nullptr;
+static QPointer<GameDetectorDock> g_dock_widget = nullptr;
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("GameDetector", "en-US")
@@ -95,7 +95,7 @@ static void save_hotkeys(obs_data_t *save_data, bool saving, void *private_data)
 
 static GameDetectorDock *get_dock()
 {
-	return g_dock_widget;
+	return g_dock_widget.data();
 }
 
 bool obs_module_load(void)
@@ -186,8 +186,6 @@ void obs_module_unload(void)
 
 	if (g_dock_widget) {
 		obs_frontend_remove_dock("game_detector");
-		QMetaObject::invokeMethod(g_dock_widget, "deleteLater", Qt::QueuedConnection);
-		QCoreApplication::processEvents();
 		g_dock_widget = nullptr;
 	}
 

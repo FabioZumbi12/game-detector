@@ -31,11 +31,12 @@ TrovoAuthManager::~TrovoAuthManager()
 
 	for (auto sock : clientSockets) {
 		if (sock) {
+			QObject::disconnect(sock, nullptr, this, nullptr);
 			if (sock->isOpen()) {
 				sock->disconnectFromHost();
 				sock->close();
 			}
-			sock->deleteLater();
+			delete sock;
 		}
 	}
 	clientSockets.clear();

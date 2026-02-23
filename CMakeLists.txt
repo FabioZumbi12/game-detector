@@ -1,4 +1,4 @@
-﻿#  OBS Game Detector - CMake Build Configuration
+#  OBS Game Detector - CMake Build Configuration
 #  This CMake configuration file sets up the build process for the OBS Game Detector plugin.
 #  It includes options for enabling the obs-frontend-api and Qt functionalities,
 #  and specifies custom output directories for the built plugin and its associated data.
@@ -109,7 +109,7 @@ endif()
 target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
-    "src/plugin-main.cpp"
+    "src/PluginMain.cpp"
     "src/GameDetectorDock.cpp"
     "src/ConfigManager.cpp"
     "src/GameDetector.cpp"

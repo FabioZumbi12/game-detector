@@ -791,7 +791,7 @@ QString GameDetector::getFileDescription(const QString &filePath)
 		return "";
 	}
 
-	struct LANGANDCODEPAGE {
+	struct LangAndCodePage {
 		WORD wLanguage;
 		WORD wCodePage;
 	} *lpTranslate;
@@ -799,7 +799,7 @@ QString GameDetector::getFileDescription(const QString &filePath)
 	UINT cbTranslate = 0;
 	if (VerQueryValue(versionInfo.data(), TEXT("\\VarFileInfo\\Translation"), (LPVOID *)&lpTranslate,
 			  &cbTranslate)) {
-		for (UINT i = 0; i < (cbTranslate / sizeof(struct LANGANDCODEPAGE)); i++) {
+		for (UINT i = 0; i < (cbTranslate / sizeof(struct LangAndCodePage)); i++) {
 
 			QString subBlock = QString("\\StringFileInfo\\%1%2\\FileDescription")
 						   .arg(lpTranslate[i].wLanguage, 4, 16, QChar('0'))
