@@ -37,3 +37,6 @@ install/
 build_*/
 setup/
 .CMakeBuildNumber
+
+# Machine-local SDK-version override, not portable across dev machines
+CMakeUserPresets.json
