@@ -37,13 +37,23 @@ GameDetector::GameDetector(QObject *parent) : QObject(parent)
 	connect(scanTimer, &QTimer::timeout, this, &GameDetector::scanProcesses);
 	connect(periodicScanTimer, &QTimer::timeout, this, &GameDetector::onPeriodicScanTriggered);
 
-	const QStringList ignoreSubstrings = {"7z",       "presentmon",     "dxsetup",       "errorreporter",
-					      "crashpad", "buildpatchtool", "redmod",        "dotnet",
-					      "bepinex",  "vcredist",       "vc_redist",     "redist",
-					      "prereq",   "crashreport",    "swarm",         "unrealpak",
-					      "bink2",    "bootstrap",      "shadercompile", "epicwebhelper",
-					      "svn",      "python",         "dumpmini",      "datacollector",
-					      "testhost", "unrealgame",     "shipping"};
+	// "launcher" and "onlineservices" added to fix a real, screenshot-evidenced
+	// misdetection: the library scan below picks the first non-ignored .exe in
+	// a game's root folder, and generic launcher-stub/redistributable names
+	// like "Launcher.exe" or "EpicOnlineServicesInstaller.exe" were winning
+	// that pick over the real game binary in a subfolder - and since two
+	// different games can both drop a stub with the same generic name, the
+	// second-scanned game silently inherited the first one's category.
+	// "uninstall"/"unins" added for the same reason (uninstaller stubs are
+	// common in a game's root folder too, same false-positive risk).
+	const QStringList ignoreSubstrings = {"7z",         "presentmon",      "dxsetup",       "errorreporter",
+					      "crashpad",   "buildpatchtool",  "redmod",        "dotnet",
+					      "bepinex",    "vcredist",        "vc_redist",     "redist",
+					      "prereq",     "crashreport",     "swarm",         "unrealpak",
+					      "bink2",      "bootstrap",       "shadercompile", "epicwebhelper",
+					      "svn",        "python",          "dumpmini",      "datacollector",
+					      "testhost",   "unrealgame",      "shipping",      "launcher",
+					      "onlineservices", "uninstall",   "unins"};
 	for (const QString &str : ignoreSubstrings) {
 		ignoreSubstringsSet.insert(str);
 	}
@@ -730,36 +740,43 @@ void GameDetector::scanProcesses()
 
 	for (unsigned int i = 0; i < numProcesses; i++) {
 		if (processes[i] != 0) {
-			HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processes[i]);
+			// PROCESS_QUERY_LIMITED_INFORMATION (not PROCESS_QUERY_INFORMATION |
+			// PROCESS_VM_READ) is the lightest access right that still lets us read
+			// a process's own exe path. The old PROCESS_VM_READ requirement is
+			// commonly denied by anti-cheat (Easy Anti-Cheat, BattlEye, Vanguard)
+			// even when OBS itself is elevated, since it's the same access memory-
+			// scanning cheat tools need - that silently dropped protected games
+			// (e.g. Marvel Rivals, which ships Easy Anti-Cheat) out of detection
+			// with no error, just a failed OpenProcess() for that one process.
+			HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processes[i]);
 			if (hProcess) {
-				HMODULE hMod;
-				DWORD cbNeeded;
-				if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeeded)) {
-					wchar_t processPath[MAX_PATH];
-					if (GetModuleFileNameExW(hProcess, hMod, processPath,
-								 sizeof(processPath) / sizeof(wchar_t))) {
-						QString processName =
-							QFileInfo(QString::fromWCharArray(processPath)).fileName();
+				// QueryFullProcessImageNameW reads the path directly from the
+				// process's own PEB - no PROCESS_VM_READ needed, unlike the old
+				// EnumProcessModules + GetModuleFileNameExW approach.
+				wchar_t processPath[MAX_PATH];
+				DWORD pathSize = MAX_PATH;
+				if (QueryFullProcessImageNameW(hProcess, 0, processPath, &pathSize)) {
+					QString processName =
+						QFileInfo(QString::fromWCharArray(processPath)).fileName();
 
-						if (knownGameExes.contains(processName)) {
+					if (knownGameExes.contains(processName)) {
 
-							QString qProcessPath = QString::fromWCharArray(processPath);
-							QString friendlyName = gameNameMap.value(processName);
-							if (friendlyName.isEmpty()) {
-								friendlyName = getFileDescription(qProcessPath);
-							}
-							if (processName != currentGameProcess) {
-								currentGameProcess = processName;
-								blog(LOG_INFO,
-								     "[GameDetector] Game detected: %s (Process: %s)",
-								     friendlyName.toStdString().c_str(),
-								     processName.toStdString().c_str());
-								emit gameDetected(friendlyName);
-							}
-							gameFoundThisScan = true;
-							CloseHandle(hProcess);
-							goto cleanup;
+						QString qProcessPath = QString::fromWCharArray(processPath);
+						QString friendlyName = gameNameMap.value(processName);
+						if (friendlyName.isEmpty()) {
+							friendlyName = getFileDescription(qProcessPath);
 						}
+						if (processName != currentGameProcess) {
+							currentGameProcess = processName;
+							blog(LOG_INFO,
+							     "[GameDetector] Game detected: %s (Process: %s)",
+							     friendlyName.toStdString().c_str(),
+							     processName.toStdString().c_str());
+							emit gameDetected(friendlyName);
+						}
+						gameFoundThisScan = true;
+						CloseHandle(hProcess);
+						goto cleanup;
 					}
 				}
 				CloseHandle(hProcess);
